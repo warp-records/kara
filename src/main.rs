@@ -1,111 +1,172 @@
-use std::vec;
+
+use strum_macros::FromRepr;
+use std::fmt;
+use arrayvec::ArrayVec;
+
+
+macro_rules! binary_op {
+    ($stack:expr, $op:tt) => {{
+        let b = $stack.pop().unwrap();
+        let a = $stack.pop().unwrap();
+        $stack.push(a $op b);
+    }};
+}
 
 fn main() {
-    println!("Hello Lox!");
-    let args: Vec<_> = std::env::args().collect();
+    use Op::*;
 
-    if args.len() > 1 {
-        println!("Usage: jlox [script]");
-    } else if args.len() == 1 {
-        runFile(args[0]);
-    } else {
-        runPrompt();
-    }
+    let mut chunk = Chunk::default();
+
+    chunk.code.push(OpConstant as u8);
+    chunk.code.push(0);
+    chunk.const_pool.push(1.2);
+    chunk.lines.push(123);
+
+    chunk.code.push(OpConstant as u8);
+    chunk.code.push(1);
+    chunk.const_pool.push(3.4);
+    chunk.lines.push(123);
+
+    chunk.code.push(OpAdd as u8);
+    chunk.lines.push(123);
+
+    chunk.code.push(OpConstant as u8);
+    chunk.code.push(2);
+    chunk.const_pool.push(5.6);
+    chunk.lines.push(123);
+
+    chunk.code.push(OpDivide as u8);
+    chunk.lines.push(123);
+
+    chunk.code.push(OpNegate as u8);
+    chunk.lines.push(123);
+
+    chunk.code.push(OpReturn as u8);
+    chunk.lines.push(123);
+
+    let mut vm = Vm::new();
+
+    println!("{:?}", vm.interpret(&chunk));
+    println!("{}", chunk);
 }
 
-fn runFile(file_name: &str) {
-    let mut tokens = scanTokens(fileName);
+//Stack point
+struct Vm {
+    pc: usize,
+    stack: ArrayVec<f64, 256>,
+}
 
-    for token in tokens {
-        println!("{}", token);
-    }
-} 
+impl Vm {
+    fn interpret(&mut self, chunk: &Chunk) -> Result<(), VmError> {
 
+        while self.pc < chunk.code.len() {
+            let instr = Op::from_repr(chunk.code[self.pc]).unwrap();
 
-fn scanTokens(stream: &str) -> Vec<Token> {
-    let mut tokens = Vec::new();
-
-    let mut line = 1;
-    let mut iter = stream.chars().peekable();
-
-    for char c in iter {
-
-        let t_type: Option<TokenType> = {
-            '(' => Some(LEFT_PAREN),
-            ')' => Some(RIGHT_PAREN),
-            '{' => Some(LEFT_BRACE),
-            '}' => Some(RIGHT_BRACE),
-            ')' => Some(COMMA),
-            '.' => Some(DOT),
-            '-' => Some(MINUS),
-            '+' => Some(PLUS),
-            ';' => Some(SEMICOLON),
-            '*' => Some(STAR),
-            '>' => Some(GREATER),
-            '<' => Some(LESS),
-            '!' => Some(BANG),
-            '=' => {
-                let prev_tok = tokens().pop().unwrap();
-
-                match tokens.last() {
-                    Some(GREATER) => Some(GREATER_EQUAL),
-                    Some(LESS) => Some(LESS_EQUAL),
-                    Some(BANG) => Some(BANG_EQUAL),
-                    Some(EQUAL) => Some(EQUAL_EQUAL),
-                    _ => {
-                        tokens.push(prev_tok);
-                        Some(EQUAL)
-                    },
+            match instr {
+                Op::OpConstant => {
+                    self.pc += 1;
+                    self.stack.push(chunk.const_pool[chunk.code[self.pc] as usize]);
                 }
-            },
-            '\n' => { line += 1; continue; },
-            _ => {
-                report_error(line);
-                //Don't worry about errors for now
+
+                Op::OpReturn => {
+                    println!("{}", self.stack.pop().unwrap());
+                },
+
+                Op::OpNegate => {
+                    let val = self.stack.last_mut().unwrap();
+                    *val = -*val;
+                },
+
+                Op::OpAdd => {
+                    binary_op!(self.stack, +);
+                },
+
+                Op::OpSubtract => {
+                    binary_op!(self.stack, -);
+                },
+
+                Op::OpMultiply => {
+                    binary_op!(self.stack, *);
+                },
+
+                Op::OpDivide => {
+                    binary_op!(self.stack, /);
+                },
+
+                //_ => {}
             }
+
+            self.pc += 1;
         }
 
-        if t_type = Some(type_) {
-            tokens.push(Token { type_, c, /*???*/, line});
-        }
+        Ok(())
     }
 
-    tokens
+    fn new() -> Vm {
+        Vm {
+            pc: 0,
+            stack: ArrayVec::new(),
+        }
+    }
 }
 
-struct Token {
-    type: TokenType,
-    lexeme: &str,
-    literal: Object,
-    line: u32,
+
+
+#[derive(Default, Debug)]
+struct Chunk {
+    code: Vec<u8>,
+    const_pool: Vec<f64>,
+    lines: Vec<u32>,
 }
 
-//?
-struct Object {};
+//"Dissasembler"
+impl fmt::Display for Chunk {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-enum TokenType {
-     // Single-character tokens.
-      LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
-      COMMA, DOT, MINUS, PLUS, SEMICOLON, SLASH, STAR,
+        let mut i = 0;
 
-      // One or two character tokens.
-      BANG, BANG_EQUAL,
-      EQUAL, EQUAL_EQUAL,
-      GREATER, GREATER_EQUAL,
-      LESS, LESS_EQUAL,
-
-      // Literals.
-      IDENTIFIER, STRING, NUMBER,
-
-      // Keywords.
-      AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,
-      PRINT, RETURN, SUPER, THIS, TRUE, VAR, WHILE,
-
-      EOF
-};
+        while i < self.code.len() {
+            let opcode = Op::from_repr(self.code[i]).unwrap();
 
 
-fn report_error(line_num: usize, message: &str) {
-    //println!("Error at line {line_num}: {message}.")
-    println!("Wow it must really suck to be you rn. Good luck dumbass, you'll need it!");
+            write!(f, "{:04} {:?}", i, opcode);
+
+            match opcode {
+                Op::OpConstant => {
+                    i += 1;
+                    write!(f, "    {} '{}'", 
+                        self.code[i], 
+                        self.const_pool[self.code[i] as usize]);
+                        //i += 1;
+                }
+
+                _ => {}
+            }
+
+            writeln!(f);
+
+            i += 1;
+        }
+
+        Ok(())
+    }
+}
+
+
+#[derive(Debug, FromRepr)]
+#[repr(u8)]
+enum Op {
+    OpConstant,
+    OpReturn,
+    OpAdd,
+    OpSubtract,
+    OpMultiply,
+    OpDivide,
+    OpNegate,
+}
+
+#[derive(Debug)]
+enum VmError {
+    CompileError,
+    RuntimeError,
 }
