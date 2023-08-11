@@ -1,8 +1,9 @@
 
 use strum_macros::FromRepr;
 use std::fmt;
+use std::fs;
 use arrayvec::ArrayVec;
-
+use std::env;
 
 macro_rules! binary_op {
     ($stack:expr, $op:tt) => {{
@@ -15,39 +16,39 @@ macro_rules! binary_op {
 fn main() {
     use Op::*;
 
-    let mut chunk = Chunk::default();
-
-    chunk.code.push(OpConstant as u8);
-    chunk.code.push(0);
-    chunk.const_pool.push(1.2);
-    chunk.lines.push(123);
-
-    chunk.code.push(OpConstant as u8);
-    chunk.code.push(1);
-    chunk.const_pool.push(3.4);
-    chunk.lines.push(123);
-
-    chunk.code.push(OpAdd as u8);
-    chunk.lines.push(123);
-
-    chunk.code.push(OpConstant as u8);
-    chunk.code.push(2);
-    chunk.const_pool.push(5.6);
-    chunk.lines.push(123);
-
-    chunk.code.push(OpDivide as u8);
-    chunk.lines.push(123);
-
-    chunk.code.push(OpNegate as u8);
-    chunk.lines.push(123);
-
-    chunk.code.push(OpReturn as u8);
-    chunk.lines.push(123);
-
     let mut vm = Vm::new();
+    let mut chunk = Chunk::new();
+
+    let args: Vec<String> = env::args.collect();
+
+    if args.len() == 2 {
+        let source = fs::read_to_string(file_path)
+            .expect("Error: unable to read file");
+
+        scan_to_chunk(&source, &mut chunk);
+    }
 
     println!("{:?}", vm.interpret(&chunk));
     println!("{}", chunk);
+}
+
+fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
+    let lines: Vec<&str> = source.lines().collect();
+
+    let line_num = 1;
+
+    for (line_num, content) in lines.enumerate() {
+        let exprs: Vec<&str> = lines.split_whitespace().collect();
+
+        for expr in exprs {
+            let token = TokenType::from(expr);
+
+            chunk.push(token);
+        }
+    }
+
+    //Must alter once you start reading into multiple chunks
+    chunk.push(TokenType::Eof)
 }
 
 //Stack point
@@ -170,3 +171,92 @@ enum VmError {
     CompileError,
     RuntimeError,
 }
+
+enum TokenType {
+    LeftParen, RightParen,
+    LeftBrace, RightBrace,
+    Comma, Dot, Minus, Plus,
+    Semicolon, Slash, Star,
+    // One or two character s.
+    Bang, BangEqual,
+    Equal, EqualEqual,
+    Greater, GreaterEqual,
+    Less, LessEqual,
+    // Literals.
+    Identifier(&str), String(&str), Number(f64),
+    // Keywords.
+    And, Class, Else, False,
+    For, Fun, If, Nil, Or,
+    Print, Return, Super, This,
+    True, Var, While,
+
+    Error, Eof
+}
+
+//Thanks ChatGPT!
+impl TryFrom<&str> for TokenType {
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "+" => Ok(TokenType::Plus),
+            "-" => Ok(TokenType::Minus),
+            "*" => Ok(TokenType::Star),
+            "/" => Ok(TokenType::Slash),
+            "(" => Ok(TokenType::LeftParen),
+            ")" => Ok(TokenType::RightParen),
+            "{" => Ok(TokenType::LeftBrace),
+            "}" => Ok(TokenType::RightBrace),
+            ")," => Ok(TokenType::Comma),
+            "." => Ok(TokenType::Dot),
+            ";" => Ok(TokenType::Semicolon),
+            "!" => Ok(TokenType::Bang),
+            "!=" => Ok(TokenType::BangEqual),
+            "=" => Ok(TokenType::Equal),
+            "==" => Ok(TokenType::EqualEqual),
+            ">" => Ok(TokenType::Greater),
+            ">=" => Ok(TokenType::GreaterEqual),
+            "<" => Ok(TokenType::Less),
+            "<=" => Ok(TokenType::LessEqual),
+            "and" => Ok(TokenType::And),
+            "class" => Ok(TokenType::Class),
+            "else" => Ok(TokenType::Else),
+            "false" => Ok(TokenType::False),
+            "for" => Ok(TokenType::For),
+            "fun" => Ok(TokenType::Fun),
+            "if" => Ok(TokenType::If),
+            "nil" => Ok(TokenType::Nil),
+            "or" => Ok(TokenType::Or),
+            "print" => Ok(TokenType::Print),
+            "return" => Ok(TokenType::Return),
+            "super" => Ok(TokenType::Super),
+            "this" => Ok(TokenType::This),
+            "true" => Ok(TokenType::True),
+            "var" => Ok(TokenType::Var),
+            "while" => Ok(TokenType::While),
+
+
+            _ => {
+                if let Some(num) = s.parse::<f64>() {
+                    Ok(TokenType::Number(num))
+                } else {
+                    let chars = s.chars();
+
+                    if chars.first() == Some('"') && chars.last() == Some('"') && s.len() > 2 {
+                        let inner = &s[1..s.len() - 1];
+
+                        if inner.chars().all(|c| c != '"') {
+                            Ok(TokenType::String(inner))
+                        }
+                    } else if let Some(first_char) = s.chars().next() {
+                        if first_char.is_alphanumeric() || first_char == '_' {
+                            Ok(TokenType::Identifier(s))
+                        } else {
+                            Error()
+                        }
+                    }
+                }
+            }, // Handle unrecognized tokens here
+        }
+    }
+}
+
+
