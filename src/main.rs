@@ -33,22 +33,135 @@ fn main() {
 }
 
 fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
-    let lines: Vec<&str> = source.lines().collect();
+    let mut line_num = 0;
+    let mut iter = source.chars().peekable();
 
-    let line_num = 1;
-
-    for (line_num, content) in lines.enumerate() {
-        let exprs: Vec<&str> = lines.split_whitespace().collect();
-
-        for expr in exprs {
-            let token = TokenType::from(expr);
-
-            chunk.push(token);
+    for c in iter {
+        if c == '\n' {
+            line_num++;
         }
-    }
 
+        if c.is_whitespace() {
+            continue;
+        }
+
+        let token = match c {
+
+            '>' => match iter.peek() {
+                '=' => { iter.next(); GreaterEqual }
+                _ => Greater
+            }
+
+            '<' => match iter.peek() {
+                '=' => { iter.next(); LessEqual }
+                _ => Less
+            }
+
+            '=' => match iter.peek() {
+                '=' => { iter.next(); EqualEqual }
+                _ => Equal
+            }
+
+
+            '!' => match iter.peek() {
+                '=' => { iter.next(); BangEqual }
+                _ => Bang
+            }
+
+            '+' => Plus,
+            '-' => Minus,
+            '*' => Star,
+            
+            '/' => match iter.peek() {
+                '/' => { 
+                    while (iter.next() != Some('\n'));
+                    line_num++;
+                    continue;
+                }
+                
+                _ => Slash
+            }
+
+            '(' => LeftParen,
+            ')' => RightParen,
+            '{' => LeftBrace,
+            '}' => RightBrace,
+            ',' => Comma,
+            '.' => Dot,
+            ';' => Semicolon,
+            
+            '\"' => {
+                let literal = String::new();
+
+                loop {
+                    match iter.next() {
+                        Some('\"') => Token::String(literal),
+                        Some(c) => {
+                            literal.push(c);
+                            if c == '\n'
+                                line_num++;
+                        }
+                        None => //Handle the fuckin error later
+                    }
+                }
+            }
+
+            //Implement later
+            c if c.is_ascii_digit() => {
+
+                //Meh whatever
+                while let Some(digit) = iter.peek().unwrap().to_digit(10)
+                    iter.next();
+
+                if iter.peek() == Some('.')
+                    iter.next();
+
+                while let Some(digit) = iter.peek().unwrap().to_digit(10)
+                    iter.next();
+
+                Number(0)
+            }
+
+
+            c if c.is_alphabetic() || c == '_' => {
+                let mut lexeme = String::new();
+
+                while (matches!(iter.peek(), Some(c) if c.is_alphanumeric() || *c == '_') {
+                    lexeme.push(c);
+                }
+
+                match lexeme.as_str() {
+                    "and" => And,
+                    "class" => Class,
+                    "else" => Else,
+                    "false" => False,
+                    "for" => For,
+                    "fun" => Fun,
+                    "if" => If,
+                    "nil" => Nil,
+                    "or" => Or,
+                    "print" => Print,
+                    "return" => Return,
+                    "super" => Super,
+                    "this" => This,
+                    "true" => True,
+                    "var" => Var,
+                    "while" => While,
+                    _ => Identifier(lexeme)
+                }
+            }
+
+            _ => {
+
+            }
+        }
+
+        chunk.code.push(token);
+        chunk.lines.push(line_num);
+    }
+    
     //Must alter once you start reading into multiple chunks
-    chunk.push(TokenType::Eof)
+    chunk.push(Eof)
 }
 
 //Stack point
@@ -172,7 +285,9 @@ enum VmError {
     RuntimeError,
 }
 
-enum TokenType {
+
+
+enum Token {
     LeftParen, RightParen,
     LeftBrace, RightBrace,
     Comma, Dot, Minus, Plus,
@@ -182,8 +297,9 @@ enum TokenType {
     Equal, EqualEqual,
     Greater, GreaterEqual,
     Less, LessEqual,
-    // Literals.
-    Identifier(&str), String(&str), Number(f64),
+    // Literals; Might change the implementation of these later
+    //to utilize the way Clox stores literals
+    Identifier(String), String(String), Number(f64),
     // Keywords.
     And, Class, Else, False,
     For, Fun, If, Nil, Or,
@@ -193,45 +309,50 @@ enum TokenType {
     Error, Eof
 }
 
-//Thanks ChatGPT!
+
+
+
+//Thanks ChatGPT! Fuck you ChatGPT! OLD CODE THAT DOESN'T WORK
+//------------------------------------------------------------
+/*
 impl TryFrom<&str> for TokenType {
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s {
-            "+" => Ok(TokenType::Plus),
-            "-" => Ok(TokenType::Minus),
-            "*" => Ok(TokenType::Star),
-            "/" => Ok(TokenType::Slash),
-            "(" => Ok(TokenType::LeftParen),
-            ")" => Ok(TokenType::RightParen),
-            "{" => Ok(TokenType::LeftBrace),
-            "}" => Ok(TokenType::RightBrace),
-            ")," => Ok(TokenType::Comma),
-            "." => Ok(TokenType::Dot),
-            ";" => Ok(TokenType::Semicolon),
-            "!" => Ok(TokenType::Bang),
-            "!=" => Ok(TokenType::BangEqual),
-            "=" => Ok(TokenType::Equal),
-            "==" => Ok(TokenType::EqualEqual),
-            ">" => Ok(TokenType::Greater),
-            ">=" => Ok(TokenType::GreaterEqual),
-            "<" => Ok(TokenType::Less),
-            "<=" => Ok(TokenType::LessEqual),
-            "and" => Ok(TokenType::And),
-            "class" => Ok(TokenType::Class),
-            "else" => Ok(TokenType::Else),
-            "false" => Ok(TokenType::False),
-            "for" => Ok(TokenType::For),
-            "fun" => Ok(TokenType::Fun),
-            "if" => Ok(TokenType::If),
-            "nil" => Ok(TokenType::Nil),
-            "or" => Ok(TokenType::Or),
-            "print" => Ok(TokenType::Print),
-            "return" => Ok(TokenType::Return),
-            "super" => Ok(TokenType::Super),
-            "this" => Ok(TokenType::This),
-            "true" => Ok(TokenType::True),
-            "var" => Ok(TokenType::Var),
-            "while" => Ok(TokenType::While),
+            '+' => TokenType::Plus,
+            '-' => TokenType::Minus,
+            '*' => TokenType::Star,
+            '/' => TokenType::Slash,
+            '(' => TokenType::LeftParen,
+            ')' => TokenType::RightParen,
+            '{' => TokenType::LeftBrace,
+            '}' => TokenType::RightBrace,
+            ',' => TokenType::Comma,
+            '.' => TokenType::Dot,
+            ';' => TokenType::Semicolon,
+            '!' => TokenType::Bang,
+            "!=" => TokenType::BangEqual,
+            "=" => TokenType::Equal,
+            "==" => TokenType::EqualEqual,
+            ">" => TokenType::Greater,
+            ">=" => TokenType::GreaterEqual,
+            "<" => TokenType::Less,
+            "<=" => TokenType::LessEqual,
+            "and" => TokenType::And,
+            "class" => TokenType::Class,
+            "else" => TokenType::Else,
+            "false" => TokenType::False,
+            "for" => TokenType::For,
+            "fun" => TokenType::Fun,
+            "if" => TokenType::If,
+            "nil" => TokenType::Nil,
+            "or" => TokenType::Or,
+            "print" => TokenType::Print,
+            "return" => TokenType::Return,
+            "super" => TokenType::Super,
+            "this" => TokenType::This,
+            "true" => TokenType::True,
+            "var" => TokenType::Var,
+            "while" => TokenType::While,
 
 
             _ => {
@@ -258,5 +379,5 @@ impl TryFrom<&str> for TokenType {
         }
     }
 }
-
+*/
 
