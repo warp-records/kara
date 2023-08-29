@@ -32,13 +32,13 @@ fn main() {
     println!("{}", chunk);
 }
 
-fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
+fn lex(source: &str, chunk: &mut Chunk) {
     let mut line_num = 0;
     let mut iter = source.chars().peekable();
 
     for c in iter {
         if c == '\n' {
-            line_num++;
+            line_num += 1;
         }
 
         if c.is_whitespace() {
@@ -91,18 +91,10 @@ fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
             ';' => Semicolon,
             
             '\"' => {
-                let literal = String::new();
+                let literal = iter.peeking_take_while(|c| c != '"').collect();
 
-                loop {
-                    match iter.next() {
-                        Some('\"') => Token::String(literal),
-                        Some(c) => {
-                            literal.push(c);
-                            if c == '\n'
-                                line_num++;
-                        }
-                        None => //Handle the fuckin error later
-                    }
+                if iter.peek() != Some("'") {
+                    Identifier(literal)
                 }
             }
 
@@ -110,14 +102,17 @@ fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
             c if c.is_ascii_digit() => {
 
                 //Meh whatever
-                while let Some(digit) = iter.peek().unwrap().to_digit(10)
+                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
                     iter.next();
+                }
 
-                if iter.peek() == Some('.')
+                if iter.peek() == Some('.') {
                     iter.next();
+                }
 
-                while let Some(digit) = iter.peek().unwrap().to_digit(10)
+                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
                     iter.next();
+                }
 
                 Number(0)
             }
@@ -126,7 +121,7 @@ fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
             c if c.is_alphabetic() || c == '_' => {
                 let mut lexeme = String::new();
 
-                while (matches!(iter.peek(), Some(c) if c.is_alphanumeric() || *c == '_') {
+                while (matches!(iter.peek(), Some(c) if c.is_alphanumeric()) || *c == '_') {
                     lexeme.push(c);
                 }
 
@@ -149,10 +144,6 @@ fn scan_to_chunk(source: &str, chunk: &mut Chunk) {
                     "while" => While,
                     _ => Identifier(lexeme)
                 }
-            }
-
-            _ => {
-
             }
         }
 
@@ -308,76 +299,3 @@ enum Token {
 
     Error, Eof
 }
-
-
-
-
-//Thanks ChatGPT! Fuck you ChatGPT! OLD CODE THAT DOESN'T WORK
-//------------------------------------------------------------
-/*
-impl TryFrom<&str> for TokenType {
-    fn try_from(s: &str) -> Result<Self, Self::Error> {
-        match s {
-            '+' => TokenType::Plus,
-            '-' => TokenType::Minus,
-            '*' => TokenType::Star,
-            '/' => TokenType::Slash,
-            '(' => TokenType::LeftParen,
-            ')' => TokenType::RightParen,
-            '{' => TokenType::LeftBrace,
-            '}' => TokenType::RightBrace,
-            ',' => TokenType::Comma,
-            '.' => TokenType::Dot,
-            ';' => TokenType::Semicolon,
-            '!' => TokenType::Bang,
-            "!=" => TokenType::BangEqual,
-            "=" => TokenType::Equal,
-            "==" => TokenType::EqualEqual,
-            ">" => TokenType::Greater,
-            ">=" => TokenType::GreaterEqual,
-            "<" => TokenType::Less,
-            "<=" => TokenType::LessEqual,
-            "and" => TokenType::And,
-            "class" => TokenType::Class,
-            "else" => TokenType::Else,
-            "false" => TokenType::False,
-            "for" => TokenType::For,
-            "fun" => TokenType::Fun,
-            "if" => TokenType::If,
-            "nil" => TokenType::Nil,
-            "or" => TokenType::Or,
-            "print" => TokenType::Print,
-            "return" => TokenType::Return,
-            "super" => TokenType::Super,
-            "this" => TokenType::This,
-            "true" => TokenType::True,
-            "var" => TokenType::Var,
-            "while" => TokenType::While,
-
-
-            _ => {
-                if let Some(num) = s.parse::<f64>() {
-                    Ok(TokenType::Number(num))
-                } else {
-                    let chars = s.chars();
-
-                    if chars.first() == Some('"') && chars.last() == Some('"') && s.len() > 2 {
-                        let inner = &s[1..s.len() - 1];
-
-                        if inner.chars().all(|c| c != '"') {
-                            Ok(TokenType::String(inner))
-                        }
-                    } else if let Some(first_char) = s.chars().next() {
-                        if first_char.is_alphanumeric() || first_char == '_' {
-                            Ok(TokenType::Identifier(s))
-                        } else {
-                            Error()
-                        }
-                    }
-                }
-            }, // Handle unrecognized tokens here
-        }
-    }
-}
-*/
-
