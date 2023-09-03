@@ -1,9 +1,13 @@
 
+use crate::Token::*;
+use Op::*;
 use strum_macros::FromRepr;
 use std::fmt;
 use std::fs;
 use arrayvec::ArrayVec;
 use std::env;
+
+use peeking_take_while::PeekableExt;
 
 macro_rules! binary_op {
     ($stack:expr, $op:tt) => {{
@@ -14,145 +18,21 @@ macro_rules! binary_op {
 }
 
 fn main() {
-    use Op::*;
 
     let mut vm = Vm::new();
     let mut chunk = Chunk::new();
 
-    let args: Vec<String> = env::args.collect();
+    let args: Vec<_> = env::args().collect();
 
     if args.len() == 2 {
-        let source = fs::read_to_string(file_path)
+        let source = fs::read_to_string(&args[1])
             .expect("Error: unable to read file");
 
-        scan_to_chunk(&source, &mut chunk);
+        chunk.lex(&source);
     }
 
     println!("{:?}", vm.interpret(&chunk));
     println!("{}", chunk);
-}
-
-fn lex(source: &str, chunk: &mut Chunk) {
-    let mut line_num = 0;
-    let mut iter = source.chars().peekable();
-
-    for c in iter {
-        if c == '\n' {
-            line_num += 1;
-        }
-
-        if c.is_whitespace() {
-            continue;
-        }
-
-        let token = match c {
-
-            '>' => match iter.peek() {
-                '=' => { iter.next(); GreaterEqual }
-                _ => Greater
-            }
-
-            '<' => match iter.peek() {
-                '=' => { iter.next(); LessEqual }
-                _ => Less
-            }
-
-            '=' => match iter.peek() {
-                '=' => { iter.next(); EqualEqual }
-                _ => Equal
-            }
-
-
-            '!' => match iter.peek() {
-                '=' => { iter.next(); BangEqual }
-                _ => Bang
-            }
-
-            '+' => Plus,
-            '-' => Minus,
-            '*' => Star,
-            
-            '/' => match iter.peek() {
-                '/' => { 
-                    while (iter.next() != Some('\n'));
-                    line_num++;
-                    continue;
-                }
-                
-                _ => Slash
-            }
-
-            '(' => LeftParen,
-            ')' => RightParen,
-            '{' => LeftBrace,
-            '}' => RightBrace,
-            ',' => Comma,
-            '.' => Dot,
-            ';' => Semicolon,
-            
-            '\"' => {
-                let literal = iter.peeking_take_while(|c| c != '"').collect();
-
-                if iter.peek() != Some("'") {
-                    Identifier(literal)
-                }
-            }
-
-            //Implement later
-            c if c.is_ascii_digit() => {
-
-                //Meh whatever
-                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
-                    iter.next();
-                }
-
-                if iter.peek() == Some('.') {
-                    iter.next();
-                }
-
-                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
-                    iter.next();
-                }
-
-                Number(0)
-            }
-
-
-            c if c.is_alphabetic() || c == '_' => {
-                let mut lexeme = String::new();
-
-                while (matches!(iter.peek(), Some(c) if c.is_alphanumeric()) || *c == '_') {
-                    lexeme.push(c);
-                }
-
-                match lexeme.as_str() {
-                    "and" => And,
-                    "class" => Class,
-                    "else" => Else,
-                    "false" => False,
-                    "for" => For,
-                    "fun" => Fun,
-                    "if" => If,
-                    "nil" => Nil,
-                    "or" => Or,
-                    "print" => Print,
-                    "return" => Return,
-                    "super" => Super,
-                    "this" => This,
-                    "true" => True,
-                    "var" => Var,
-                    "while" => While,
-                    _ => Identifier(lexeme)
-                }
-            }
-        }
-
-        chunk.code.push(token);
-        chunk.lines.push(line_num);
-    }
-    
-    //Must alter once you start reading into multiple chunks
-    chunk.push(Eof)
 }
 
 //Stack point
@@ -168,33 +48,33 @@ impl Vm {
             let instr = Op::from_repr(chunk.code[self.pc]).unwrap();
 
             match instr {
-                Op::OpConstant => {
+                OpConstant => {
                     self.pc += 1;
                     self.stack.push(chunk.const_pool[chunk.code[self.pc] as usize]);
                 }
 
-                Op::OpReturn => {
+                OpReturn => {
                     println!("{}", self.stack.pop().unwrap());
                 },
 
-                Op::OpNegate => {
+                OpNegate => {
                     let val = self.stack.last_mut().unwrap();
                     *val = -*val;
                 },
 
-                Op::OpAdd => {
+                OpAdd => {
                     binary_op!(self.stack, +);
                 },
 
-                Op::OpSubtract => {
+                OpSubtract => {
                     binary_op!(self.stack, -);
                 },
 
-                Op::OpMultiply => {
+                OpMultiply => {
                     binary_op!(self.stack, *);
                 },
 
-                Op::OpDivide => {
+                OpDivide => {
                     binary_op!(self.stack, /);
                 },
 
@@ -224,7 +104,7 @@ struct Chunk {
     lines: Vec<u32>,
 }
 
-//"Dissasembler"
+//"Disassembler"
 impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
@@ -237,7 +117,7 @@ impl fmt::Display for Chunk {
             write!(f, "{:04} {:?}", i, opcode);
 
             match opcode {
-                Op::OpConstant => {
+                OpConstant => {
                     i += 1;
                     write!(f, "    {} '{}'", 
                         self.code[i], 
@@ -253,6 +133,149 @@ impl fmt::Display for Chunk {
             i += 1;
         }
 
+        Ok(())
+    }
+}
+
+impl Chunk {
+    fn new() -> Self {
+        Self {
+            code: Vec::new(),
+            const_pool: Vec::new(),
+            lines: Vec::new(),
+        }
+    }
+
+    fn lex(&mut self, source: &str) -> Result<(), VmError> {
+        let mut line_num = 0;
+        let mut iter = source.chars().peekable();
+
+        while let Some(c) = iter.next() {
+            if c == '\n' {
+                line_num += 1;
+            }
+
+            if c.is_whitespace() {
+                continue;
+            }
+
+            //Handle compile time errors later
+            //who needs error handling anyways
+            let token = match c {
+
+                '>' => match iter.peek() {
+                    Some('=') => { iter.next(); GreaterEqual }
+                    _ => Greater
+                }
+
+                '<' => match iter.peek() {
+                    Some('=') => { iter.next(); LessEqual }
+                    _ => Less
+                }
+
+                '=' => match iter.peek() {
+                    Some('=') => { iter.next(); EqualEqual }
+                    _ => Equal
+                }
+
+
+                '!' => match iter.peek() {
+                    Some('=') => { iter.next(); BangEqual }
+                    _ => Bang
+                }
+
+                '+' => Plus,
+                '-' => Minus,
+                '*' => Star,
+                
+                '/' => match iter.peek() {
+                    Some(&'/') => { 
+                        iter.by_ref().skip_while(|c| *c != '\n');
+                        line_num += 1;
+                        continue;
+                    }
+                    
+                    _ => Slash
+                }
+
+                '(' => LeftParen,
+                ')' => RightParen,
+                '{' => LeftBrace,
+                '}' => RightBrace,
+                ',' => Comma,
+                '.' => Dot,
+                ';' => Semicolon,
+                
+                '\"' => {
+                    let literal: Vec<_> = iter.by_ref().peeking_take_while(|c| *c != '"').collect();
+
+                    //Do nothing with it for now
+
+                    if iter.peek() != Some(&'\"') {
+                        panic!("Hahaha sucker good luck debugging lmfao");
+                    }
+
+                    Str
+                }
+
+                //Implement later
+                c if c.is_ascii_digit() => {
+
+                    //Meh whatever
+                    while let Some(digit) = iter.peek().unwrap().to_digit(10) {
+                        iter.next();
+                    }
+
+                    if iter.peek() == Some(&'.') {
+                        iter.next();
+                    }
+
+                    while let Some(digit) = iter.peek().unwrap().to_digit(10) {
+                        iter.next();
+                    }
+
+                    Number
+                }
+
+
+                c if c.is_alphabetic() || c == '_' => {
+                    let mut lexeme = String::new();
+
+                    while matches!(iter.peek(), Some(c) if c.is_alphanumeric()) || c == '_' {
+                        lexeme.push(c);
+                    }
+
+                    match lexeme.as_str() {
+                        "and" => And,
+                        "class" => Class,
+                        "else" => Else,
+                        "false" => False,
+                        "for" => For,
+                        "fun" => Fun,
+                        "if" => If,
+                        "nil" => Nil,
+                        "or" => Or,
+                        "print" => Print,
+                        "return" => Return,
+                        "super" => Super,
+                        "this" => This,
+                        "true" => True,
+                        "var" => Var,
+                        "while" => While,
+                        //idfk how we're gonna handle strings lol
+                        _ => Identifier
+                    }
+                }
+
+                _ => panic!()
+            };
+
+            self.code.push(token as u8);
+            self.lines.push(line_num);
+        }
+        
+        //Must alter once you start reading into multiple chunks
+        self.code.push(Eof as u8);
         Ok(())
     }
 }
@@ -290,7 +313,7 @@ enum Token {
     Less, LessEqual,
     // Literals; Might change the implementation of these later
     //to utilize the way Clox stores literals
-    Identifier(String), String(String), Number(f64),
+    Identifier, Str, Number,
     // Keywords.
     And, Class, Else, False,
     For, Fun, If, Nil, Or,
@@ -299,3 +322,5 @@ enum Token {
 
     Error, Eof
 }
+
+
