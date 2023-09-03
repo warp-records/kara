@@ -28,17 +28,30 @@ fn main() {
         let source = fs::read_to_string(&args[1])
             .expect("Error: unable to read file");
 
+        //println!("{}", source);
+
         chunk.lex(&source);
     }
 
-    println!("{:?}", vm.interpret(&chunk));
-    println!("{}", chunk);
+    //println!("{:?}", vm.interpret(&chunk));
+    //println!("{}", chunk);
 }
 
 //Stack point
 struct Vm {
     pc: usize,
     stack: ArrayVec<f64, 256>,
+}
+
+
+#[derive(Default, Debug)]
+struct Chunk {
+    //Wait shit, in the lexer these are pushed as Tokens
+    //but in the disassembler they're interpreted as Op's
+    //figure out wtf is going on there
+    code: Vec<u8>,
+    const_pool: Vec<f64>,
+    lines: Vec<u32>,
 }
 
 impl Vm {
@@ -96,14 +109,6 @@ impl Vm {
 }
 
 
-
-#[derive(Default, Debug)]
-struct Chunk {
-    code: Vec<u8>,
-    const_pool: Vec<f64>,
-    lines: Vec<u32>,
-}
-
 //"Disassembler"
 impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -111,8 +116,8 @@ impl fmt::Display for Chunk {
         let mut i = 0;
 
         while i < self.code.len() {
+            //fix this bullshit later
             let opcode = Op::from_repr(self.code[i]).unwrap();
-
 
             write!(f, "{:04} {:?}", i, opcode);
 
@@ -211,8 +216,9 @@ impl Chunk {
 
                     //Do nothing with it for now
 
-                    if iter.peek() != Some(&'\"') {
-                        panic!("Hahaha sucker good luck debugging lmfao");
+                    if iter.next() != Some('\"') {
+                        panic!("Hahaha sucker, not gonna tell you what
+                        the error here is, good luck debugging lmfao");
                     }
 
                     Str
@@ -239,10 +245,14 @@ impl Chunk {
 
 
                 c if c.is_alphabetic() || c == '_' => {
-                    let mut lexeme = String::new();
+                    let mut lexeme = String::from(c);
 
-                    while matches!(iter.peek(), Some(c) if c.is_alphanumeric()) || c == '_' {
-                        lexeme.push(c);
+                    while let Some(c) = iter.next() {
+                        if c.is_alphabetic() || c == '_' {
+                            lexeme.push(c);
+                        } else {
+                            break;
+                        }
                     }
 
                     match lexeme.as_str() {
@@ -269,6 +279,7 @@ impl Chunk {
 
                 _ => panic!()
             };
+            println!("{:?}", token);
 
             self.code.push(token as u8);
             self.lines.push(line_num);
@@ -300,7 +311,8 @@ enum VmError {
 }
 
 
-
+#[derive(Debug, FromRepr)]
+#[repr(u8)]
 enum Token {
     LeftParen, RightParen,
     LeftBrace, RightBrace,
