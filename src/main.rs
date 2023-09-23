@@ -1,5 +1,5 @@
 
-use crate::Token::*;
+use crate::TokenType::*;
 use Op::*;
 use strum_macros::FromRepr;
 use std::fmt;
@@ -30,7 +30,7 @@ fn main() {
 
         //println!("{}", source);
 
-        chunk.lex(&source);
+        lex(&source);
     }
 
     //println!("{:?}", vm.interpret(&chunk));
@@ -151,144 +151,175 @@ impl Chunk {
         }
     }
 
-    fn lex(&mut self, source: &str) -> Result<(), VmError> {
-        let mut line_num = 0;
-        let mut iter = source.chars().peekable();
+}
 
-        while let Some(c) = iter.next() {
-            if c == '\n' {
-                line_num += 1;
-            }
+fn lex(source: &str) -> Result<Vec<Token>, VmError> {
+    let mut line_num = 0;
+    let mut iter = source.chars().peekable();
 
-            if c.is_whitespace() {
-                continue;
-            }
+    let mut tokens = Vec::new();
+    let mut curr_idx: usize = 0;
 
-            //Handle compile time errors later
-            //who needs error handling anyways
-            let token = match c {
+    while let Some(c) = iter.next() {
 
-                '>' => match iter.peek() {
-                    Some('=') => { iter.next(); GreaterEqual }
-                    _ => Greater
-                }
-
-                '<' => match iter.peek() {
-                    Some('=') => { iter.next(); LessEqual }
-                    _ => Less
-                }
-
-                '=' => match iter.peek() {
-                    Some('=') => { iter.next(); EqualEqual }
-                    _ => Equal
-                }
-
-
-                '!' => match iter.peek() {
-                    Some('=') => { iter.next(); BangEqual }
-                    _ => Bang
-                }
-
-                '+' => Plus,
-                '-' => Minus,
-                '*' => Star,
-                
-                '/' => match iter.peek() {
-                    Some(&'/') => { 
-                        iter.by_ref().skip_while(|c| *c != '\n');
-                        line_num += 1;
-                        continue;
-                    }
-                    
-                    _ => Slash
-                }
-
-                '(' => LeftParen,
-                ')' => RightParen,
-                '{' => LeftBrace,
-                '}' => RightBrace,
-                ',' => Comma,
-                '.' => Dot,
-                ';' => Semicolon,
-                
-                '\"' => {
-                    let literal: Vec<_> = iter.by_ref().peeking_take_while(|c| *c != '"').collect();
-
-                    //Do nothing with it for now
-
-                    if iter.next() != Some('\"') {
-                        panic!("Hahaha sucker, not gonna tell you what
-                        the error here is, good luck debugging lmfao");
-                    }
-
-                    Str
-                }
-
-                //Implement later
-                c if c.is_ascii_digit() => {
-
-                    //Meh whatever
-                    while let Some(digit) = iter.peek().unwrap().to_digit(10) {
-                        iter.next();
-                    }
-
-                    if iter.peek() == Some(&'.') {
-                        iter.next();
-                    }
-
-                    while let Some(digit) = iter.peek().unwrap().to_digit(10) {
-                        iter.next();
-                    }
-
-                    Number
-                }
-
-
-                c if c.is_alphabetic() || c == '_' => {
-                    let mut lexeme = String::from(c);
-
-                    while let Some(c) = iter.next() {
-                        if c.is_alphabetic() || c == '_' {
-                            lexeme.push(c);
-                        } else {
-                            break;
-                        }
-                    }
-
-                    match lexeme.as_str() {
-                        "and" => And,
-                        "class" => Class,
-                        "else" => Else,
-                        "false" => False,
-                        "for" => For,
-                        "fun" => Fun,
-                        "if" => If,
-                        "nil" => Nil,
-                        "or" => Or,
-                        "print" => Print,
-                        "return" => Return,
-                        "super" => Super,
-                        "this" => This,
-                        "true" => True,
-                        "var" => Var,
-                        "while" => While,
-                        //idfk how we're gonna handle strings lol
-                        _ => Identifier
-                    }
-                }
-
-                _ => panic!()
-            };
-            println!("{:?}", token);
-
-            self.code.push(token as u8);
-            self.lines.push(line_num);
+        if c.is_whitespace() {
+            if c == '\n' { line_num += 1; }
+            curr_idx += 1;
+            continue;
         }
-        
-        //Must alter once you start reading into multiple chunks
-        self.code.push(Eof as u8);
-        Ok(())
+
+        //Handle compile time errors later
+        //who needs error handling anyways
+        let start_idx = curr_idx;
+
+        let token_type = match c {
+
+            '>' => match iter.peek() {
+                Some('=') => { iter.next(); curr_idx += 1; GreaterEqual }
+                _ => Greater
+            }
+
+            '<' => match iter.peek() {
+                Some('=') => { iter.next(); curr_idx += 1; LessEqual }
+                _ => Less
+            }
+
+            '=' => match iter.peek() {
+                Some('=') => { iter.next(); curr_idx += 1; EqualEqual }
+                _ => Equal
+            }
+
+
+            '!' => match iter.peek() {
+                Some('=') => { iter.next(); curr_idx += 1; BangEqual }
+                _ => Bang
+            }
+
+            '+' => Plus,
+            '-' => Minus,
+            '*' => Star,
+            
+            '/' => match iter.peek() {
+                Some(&'/') => { 
+                    iter.by_ref().skip_while(|c| *c != '\n');
+                    line_num += 1;
+                    continue;
+                }
+                
+                _ => Slash
+            }
+
+            '(' => LeftParen,
+            ')' => RightParen,
+            '{' => LeftBrace,
+            '}' => RightBrace,
+            ',' => Comma,
+            '.' => Dot,
+            ';' => Semicolon,
+            
+            '\"' => {
+                while let Some(c) = iter.next() {
+                    curr_idx += 1;
+                }
+
+                curr_idx -= 1;
+
+
+                //Do nothing with it for now
+
+                if iter.next() != Some('\"') {
+                    panic!("Hahaha sucker, not gonna tell you what
+                    the error here is, fuck you and good luck debugging lmfao");
+                }
+
+                Str
+            }
+
+            //Implement later
+            c if c.is_ascii_digit() => {
+
+                //Meh whatever
+                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
+                    iter.next();
+                    curr_idx += 1;
+                }
+
+                if iter.peek() == Some(&'.') {
+                    iter.next();
+                    curr_idx += 1;
+                }
+
+                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
+                    iter.next();
+                    curr_idx += 1;
+                }
+
+                Number
+            }
+
+
+            c if c.is_alphabetic() || c == '_' => {
+                let mut lexeme = String::from(c);
+
+                while let Some(c) = iter.next() {
+                    if c.is_alphabetic() || c == '_' {
+                        curr_idx += 1;
+                        lexeme.push(c);
+                    } else {
+                        break;
+                    }
+                }
+
+
+                match lexeme.as_str() {
+                    "and" => And,
+                    "class" => Class,
+                    "else" => Else,
+                    "false" => False,
+                    "for" => For,               
+                    "fun" => Fun,
+                    "if" => If,                 
+                    "nil" => Nil,                    
+                    "or" => Or,                    
+                    "print" => Print,                    
+                    "return" => Return,                    
+                    "super" => Super,                   
+                    "this" => This,
+                    "true" => True,                    
+                    "var" => Var,                   
+                    "while" => While,
+                    //idfk how we're gonna handle strings lol
+                    _ => Identifier
+                }
+            }
+
+            _ => panic!()
+        };
+
+        //Many cases are only one byte so we just add that here instead
+        curr_idx += 1;
+
+        let mut token = Token {
+            kind: token_type,
+            line_num: line_num,
+            content: &source[start_idx..curr_idx]
+        };
+
+
+        println!("{:?}", token);
+
+        tokens.push(token);
     }
+
+
+    //Must alter once you start reading into multiple chunks
+    tokens.push(Token {
+        kind: Eof,
+        line_num: line_num,
+        content: ""
+    });
+
+    Ok(tokens)
 }
 
 
@@ -310,10 +341,16 @@ enum VmError {
     RuntimeError,
 }
 
+#[derive(Debug)]
+struct Token<'a> {
+    kind: TokenType,
+    line_num: usize,
+    //How to make this an iterator over
+    content: &'a str
+}
 
 #[derive(Debug, FromRepr)]
-#[repr(u8)]
-enum Token {
+enum TokenType {
     LeftParen, RightParen,
     LeftBrace, RightBrace,
     Comma, Dot, Minus, Plus,
@@ -332,7 +369,7 @@ enum Token {
     Print, Return, Super, This,
     True, Var, While,
 
-    Error, Eof
+    Newline, Eof
 }
 
 
