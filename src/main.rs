@@ -30,11 +30,11 @@ fn main() {
 
         //println!("{}", source);
 
-        lex(&source);
+        let tokens = lex(&source);
+        //println!("{:?}", tokens);
     }
 
     //println!("{:?}", vm.interpret(&chunk));
-    //println!("{}", chunk);
 }
 
 //Stack point
@@ -168,6 +168,8 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             continue;
         }
 
+        assert_eq!(source.as_bytes()[curr_idx] as char, c);
+
         //Handle compile time errors later
         //who needs error handling anyways
         let start_idx = curr_idx;
@@ -218,16 +220,22 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             ';' => Semicolon,
             
             '\"' => {
-                while let Some(c) = iter.next() {
-                    curr_idx += 1;
+                iter.next();
+                curr_idx += 1;
+                    
+                //for debugging
+                let max_idx = curr_idx + 100;
+
+                while iter.next() != Some('\"') {
+                    curr_idx += 1;            
                 }
 
-                curr_idx -= 1;
-
+                curr_idx += 1;
 
                 //Do nothing with it for now
 
-                if iter.next() != Some('\"') {
+                if iter.peek() == None {
+                    println!("{}", *iter.peek().unwrap());
                     panic!("Hahaha sucker, not gonna tell you what
                     the error here is, fuck you and good luck debugging lmfao");
                 }
@@ -261,10 +269,12 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             c if c.is_alphabetic() || c == '_' => {
                 let mut lexeme = String::from(c);
 
-                while let Some(c) = iter.next() {
-                    if c.is_alphabetic() || c == '_' {
+                while let Some(c) = iter.peek() {
+                    if (*c).is_alphabetic() || (*c) == '_' {
+                        lexeme.push(*c);
+                        iter.next();
                         curr_idx += 1;
-                        lexeme.push(c);
+
                     } else {
                         break;
                     }
@@ -296,7 +306,6 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             _ => panic!()
         };
 
-        //Many cases are only one byte so we just add that here instead
         curr_idx += 1;
 
         let mut token = Token {
