@@ -222,10 +222,8 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             '\"' => {
                 iter.next();
                 curr_idx += 1;
-                    
-                //for debugging
-                let max_idx = curr_idx + 100;
 
+                //Might crash if you get to the end
                 while iter.next() != Some('\"') {
                     curr_idx += 1;            
                 }
@@ -315,7 +313,7 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
         };
 
 
-        println!("{:?}", token);
+        println!("{}\t{:?}", token.content, token.kind);
 
         tokens.push(token);
     }

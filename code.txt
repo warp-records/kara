@@ -1,7 +1,20 @@
-var message = "Hello world!";
+fun returnFunction() {
+  var outside = "outside";
 
-var sum = 0;
+  fun inner() {
+    print outside;
+  }
 
-for (var i = 1; i <= 10; i = i + 1) {
-	sum = sum + 1;
+  return inner;
+}
+
+var fn = returnFunction();
+fn();
+
+fun outerFunction() {
+  fun localFunction() {
+    print "I'm local!";
+  }
+
+  localFunction();
 }
