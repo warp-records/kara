@@ -7,8 +7,6 @@ use std::fs;
 use arrayvec::ArrayVec;
 use std::env;
 
-use peeking_take_while::PeekableExt;
-
 macro_rules! binary_op {
     ($stack:expr, $op:tt) => {{
         let b = $stack.pop().unwrap();
@@ -203,7 +201,7 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             
             '/' => match iter.peek() {
                 Some(&'/') => { 
-                    iter.by_ref().skip_while(|c| *c != '\n');
+                    while iter.next() != Some('\n') {};
                     line_num += 1;
                     continue;
                 }
@@ -232,10 +230,10 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
 
                 //Do nothing with it for now
 
-                if iter.peek() == None {
+                if iter.peek().is_none() {
                     println!("{}", *iter.peek().unwrap());
                     panic!("Hahaha sucker, not gonna tell you what
-                    the error here is, fuck you and good luck debugging lmfao");
+                    the error here is, fuck you and good luck debugging lmao");
                 }
 
                 Str
@@ -329,6 +327,34 @@ fn lex(source: &str) -> Result<Vec<Token>, VmError> {
     Ok(tokens)
 }
 
+/*
+fn compile(tokens: Vec<Token>) -> Result<Vec<Op>, VmError> {
+    let mut opcodes = Vec::new();
+    let mut const_pool = Vec::new();
+
+    let mut prev_tok = Token {
+        kind: None,
+        line_num: 0,
+        content: ""
+    };
+
+    for token in tokens {
+
+        let opcode = match token.kind {
+            Number => {
+                const_pool.push(token.content.parse::<f64>());
+                if const_pool.len() > 256 { panic!("Too many consts in const pool!"); }
+                OpConstant
+            },
+            
+            _ => todo!()
+        };
+
+    }
+
+    Ok(opcodes)
+}*/
+
 
 #[derive(Debug, FromRepr)]
 #[repr(u8)]
@@ -376,7 +402,8 @@ enum TokenType {
     Print, Return, Super, This,
     True, Var, While,
 
-    Newline, Eof
+    //None is strictly for 
+    Newline, Eof, None
 }
 
 
