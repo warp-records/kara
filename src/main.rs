@@ -6,6 +6,7 @@ use std::fs;
 
 pub mod vm;
 pub mod lex;
+pub mod compile;
 
 use vm::*;
 use lex::*;
@@ -23,10 +24,10 @@ fn main() {
 
         //println!("{}", source);
 
-        let tokens = lex(&source);
+        let tokens = lex(&source).unwrap();
         //println!("{:?}", tokens);
     }
 
-    //println!("{:?}", vm.interpret(&chunk));
+    println!("{:?}", vm.interpret(&chunk));
 }
 

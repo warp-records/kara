@@ -3,7 +3,7 @@ use crate::vm::VmError;
 use TokenType::*;
 use strum_macros::FromRepr;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Token<'a> {
     kind: TokenType,
     line_num: usize,
@@ -109,7 +109,8 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 curr_idx += 1;
 
                 //Might crash if you get to the end
-                while iter.next() != Some('\"') {
+                let mut chr = iter.next();
+                while chr.is_some() && chr != Some('\"') {
                     curr_idx += 1;            
                 }
 
@@ -118,9 +119,8 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 //Do nothing with it for now
 
                 if iter.peek().is_none() {
-                    println!("{}", *iter.peek().unwrap());
-                    panic!("Hahaha sucker, not gonna tell you what
-                    the error here is, fuck you and good luck debugging lmao");
+                    panic!("Hahaha sucker, not gonna tell you what the error here is, \
+                    		fuck you and good luck debugging lmao");
                 }
 
                 Str

@@ -37,6 +37,13 @@ enum Op {
     OpNegate,
 }
 
+impl Op {
+
+    pub fn to_repr(&self) -> u8 {
+        *self as u8
+    }
+}
+
 
 #[derive(Default, Debug)]
 pub struct Chunk {
