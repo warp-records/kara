@@ -27,7 +27,7 @@ pub enum VmError {
 
 #[derive(Debug, FromRepr)]
 #[repr(u8)]
-enum Op {
+pub enum Op {
     OpConstant,
     OpReturn,
     OpAdd,
@@ -37,12 +37,13 @@ enum Op {
     OpNegate,
 }
 
+/*
 impl Op {
 
     pub fn to_repr(&self) -> u8 {
         *self as u8
     }
-}
+}*/
 
 
 #[derive(Default, Debug)]
@@ -119,12 +120,13 @@ impl fmt::Display for Chunk {
             //fix this bullshit later
             let opcode = Op::from_repr(self.code[i]).unwrap();
 
-            write!(f, "{:04} {:?}", i, opcode);
+            //rust throws a fit if I don't put a stupid underscore beforehand
+            _ = write!(f, "{:04} {:?}", i, opcode);
 
             match opcode {
                 OpConstant => {
                     i += 1;
-                    write!(f, "    {} '{}'", 
+                    _ = write!(f, "    {} '{}'", 
                         self.code[i], 
                         self.const_pool[self.code[i] as usize]);
                         //i += 1;
@@ -133,7 +135,7 @@ impl fmt::Display for Chunk {
                 _ => {}
             }
 
-            writeln!(f);
+            _ = writeln!(f);
 
             i += 1;
         }

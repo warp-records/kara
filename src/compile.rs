@@ -1,77 +1,130 @@
 
 use crate::Token;
-use crate::vm::VmError::*;
+use crate::TokenType::*;
+use crate::vm::VmError;
+use crate::Op::*;
+use ParsePrecedence::*;
+use std::vec::IntoIter;
 
-struct Parser {
-    previous: Token,
-    current: Token,
+//only needs lifetime parameter because
+//token contains string slice
+struct Parser<'a> {
+    previous: Token<'a>,
+    current: Token<'a>,
 }
 
-pub struct Compiler {
-    parser: Parser,
-    tokens: Vec<Token>,
+enum ParsePrecedence {
+    Null,
+    Assignemnt,
+    And,
+    Equality,
+    Comparison,
+    Term,
+    Factor,
+    Unary,
+    Call,
+    Primary,
 }
 
-impl Compiler {
+pub struct Compiler<'a> {
+    parser: Parser<'a>,
+    tokens: IntoIter<Token<'a>>,
+    //machiiiine
+    bytecode: Vec<u8>,
+    const_pool: Vec<f64>,
+    //prec_level: 
+}
 
-    fn expression() {
-        grouping();
-        
-    }
+impl<'a> Compiler<'a> {
 
-    fn grouping() {
+    pub fn new(tokens: Vec<Token<'a>>) -> Self {
+        Self {
+            tokens: tokens.into_iter(),
+            parser: Parser {
+                previous: Token {
+                    kind: Blank,
+                    line_num: 0,
+                    content: ""
+                },
 
-    }
-
-    pub fn new(tokens: Vec<Token>) {
-        self.tokens = tokens.into_iter();
-        Parser {
-            previous: Token {
-                kind: None,
-                line_num: 0,
-                content: ""
+                current: Token {
+                    kind: Blank,
+                    line_num: 0,
+                    content: ""
+                }
             },
-
-            current: {
-                Token
-                kind: None,
-                line_num: 0,
-                content: ""
-            }
+            const_pool: vec![],
+            bytecode: vec![],
         }
     }
 
-    pub fn compile() -> Result<Vec<u8>, VmError> {
-
-        let mut opcodes = vec![];
-        let mut tokens_iter = self.tokens.iter();
+    //just implement the authors way, and change later
+    pub fn compile(&mut self) -> Result<Vec<u8>, VmError> {
         
-        for token in tokens_iter {
-            parser.previous = parser.current;
-            parser.current = token;
+        while let Some(token) = self.tokens.next() {
+            self.parser.previous = self.parser.current;
+            self.parser.current = token;
 
-            let opcode = match token.kind {
+            match token.kind {
                 Number => {
-                    const_pool.push(token.content.parse::<f64>());
-                    /*panic!("Too many consts in const pool!");*/ 
-                    if const_pool.len() > 256 { return Err(CompileError); }
-                    OpConstant
+                    self.number(token.content.parse::<f64>().unwrap());
                 },
 
-                //LeftParen => {
-                //    expression();
-                //    if (tokens_iter.next() != Some(")")) { return Err(CompileError); }
-                //}
+                LeftParen => {
+                    //expression() is probably just compile()
+                    self.grouping();
+                },
 
                 _ => todo!()
             };
-
-            opcodes.push(opcode as u8);
-            if opcode == OpConstant { opcodes.push(const_pool.len()-1); }
         }
 
-        Ok(opcodes)
+        //FIND way to clone without copying when you're not tired
+        Ok(std::mem::take(&mut self.bytecode))
     }
+
+    fn expression(&mut self) {
+
+    }
+
+
+    //prolly gonna have to change this later
+    fn grouping(&mut self) -> Result<(), ()> {
+        //Never be afraid to express yourself :)
+        self.expression();
+        if self.tokens.next().map(|token| token.kind) != Some(RightParen) { 
+            Err(()) 
+        } else {
+            Ok(())
+        }
+    }
+
+    fn number(&mut self, val: f64) -> Result<(), ()> {
+        self.const_pool.push(val);
+        if self.const_pool.len() > 256 { return Err(()); }
+
+        self.bytecode.push(OpConstant as u8);
+        self.bytecode.push((self.const_pool.len()-1) as u8);
+        Ok(())
+    }
+
+    //keep for now, possibly remove later
+    fn unary(&mut self) {
+        let op = self.parser.previous.kind;
+        self.expression();
+
+        match op {
+            Minus => {
+                self.bytecode.push(OpNegate as u8);
+            },
+            _ => unreachable!(),
+        };
+    }
+
+    fn parse_precedence(&mut self, level: ParsePrecedence) {
+
+    }
+
 }
 
 
@@ -123,5 +176,20 @@ static void number() {
     emitConstant(value);
 }
 
+static void unary() {
+    TokenType operatorType = parser.previous.type;
 
+    // Compile the operand.
+     expression();
+
+     // Emit the operator instruction.
+    switch (operatorType) {
+        case TOKEN_MINUS: emitByte(OP_NEGATE); break;
+        default: return; // Unreachable.
+    }
+}
+
+static void parsePrecedence(Precedence precedence) {
+  // What goes here?
+}
 */

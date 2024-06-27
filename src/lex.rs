@@ -5,15 +5,15 @@ use strum_macros::FromRepr;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Token<'a> {
-    kind: TokenType,
-    line_num: usize,
+    pub kind: TokenType,
+    pub line_num: usize,
     //How to make this an iterator over
-    content: &'a str
+    pub content: &'a str
 }
 
 
-#[derive(Debug, FromRepr)]
-enum TokenType {
+#[derive(Debug, FromRepr, Copy, Clone, PartialEq)]
+pub enum TokenType {
     LeftParen, RightParen,
     LeftBrace, RightBrace,
     Comma, Dot, Minus, Plus,
@@ -32,8 +32,8 @@ enum TokenType {
     Print, Return, Super, This,
     True, Var, While,
 
-    //None is strictly for 
-    Newline, Eof, None
+    //Use Blank instead of None
+    Newline, Eof, Blank
 }
 
 
@@ -109,7 +109,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 curr_idx += 1;
 
                 //Might crash if you get to the end
-                let mut chr = iter.next();
+                let chr = iter.next();
                 while chr.is_some() && chr != Some('\"') {
                     curr_idx += 1;            
                 }
@@ -130,7 +130,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             c if c.is_ascii_digit() => {
 
                 //Meh whatever
-                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
+                while let Some(_digit) = iter.peek().unwrap().to_digit(10) {
                     iter.next();
                     curr_idx += 1;
                 }
@@ -140,7 +140,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                     curr_idx += 1;
                 }
 
-                while let Some(digit) = iter.peek().unwrap().to_digit(10) {
+                while let Some(_digit) = iter.peek().unwrap().to_digit(10) {
                     iter.next();
                     curr_idx += 1;
                 }
