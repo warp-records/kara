@@ -89,23 +89,18 @@ impl<'a> Compiler<'a> {
 
 
     //prolly gonna have to change this later
-    fn grouping(&mut self) -> Result<(), ()> {
+    fn grouping(&mut self) {
         //Never be afraid to express yourself :)
         self.expression();
-        if self.tokens.next().map(|token| token.kind) != Some(RightParen) { 
-            Err(()) 
-        } else {
-            Ok(())
-        }
+        if self.tokens.next().map(|token| token.kind) != Some(RightParen) { panic!("Expected ')'"); }
     }
 
-    fn number(&mut self, val: f64) -> Result<(), ()> {
+    fn number(&mut self, val: f64) {
         self.const_pool.push(val);
-        if self.const_pool.len() > 256 { return Err(()); }
+        if self.const_pool.len() > 256 { panic!("No room in const pool"); }
 
         self.bytecode.push(OpConstant as u8);
         self.bytecode.push((self.const_pool.len()-1) as u8);
-        Ok(())
     }
 
     //keep for now, possibly remove later
