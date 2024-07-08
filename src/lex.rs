@@ -129,11 +129,12 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 Str
             }
 
-            //Implement later
             c if c.is_ascii_digit() => {
 
-                //Meh whatever
-                while let Some(_digit) = iter.peek().unwrap().to_digit(10) {
+                while let Some(next) = iter.peek() {
+                    //in case code ends with number
+                    if next.to_digit(10).is_none() { break };
+
                     iter.next();
                     curr_idx += 1;
                 }
@@ -143,7 +144,9 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                     curr_idx += 1;
                 }
 
-                while let Some(_digit) = iter.peek().unwrap().to_digit(10) {
+                while let Some(next) = iter.peek() {
+                    if next.to_digit(10).is_none() { break };
+
                     iter.next();
                     curr_idx += 1;
                 }

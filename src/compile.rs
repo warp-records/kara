@@ -82,29 +82,9 @@ impl<'a> Compiler<'a> {
 
     //just implement the authors way, and change later
     pub fn compile(&mut self) -> Result<Vec<u8>, VmError> {
-            
-        /*
-        while let Some(token) = self.tokens.next() {
-            self.parser.previous = self.parser.current;
-            self.parser.current = token;
-
-            match token.kind {
-                Number => {
-                    self.number();
-                },
-
-                LeftParen => {
-                    //expression() is probably just compile()
-                    self.grouping();
-                },
-
-                _ => todo!()
-            };
-
-        }*/
+        self.advance();
         self.expression();
 
-        //FIND way to clone without copying when you're not tired
         Ok(std::mem::take(&mut self.bytecode))
     }
 
@@ -112,16 +92,16 @@ impl<'a> Compiler<'a> {
         self.parse_precedence(Assignemnt);
     }
 
-
     //prolly gonna have to change this later
     fn grouping(&mut self) {
         //Never be afraid to express yourself :)
         self.expression();
-        if self.tokens.next().map(|token| token.kind) != Some(RightParen) { panic!("Expected ')'"); }
+        //if self.tokens.next().map(|token| token.kind) != Some(RightParen) { panic!("Expected ')'"); }
+        if self.parser.current.kind != RightParen { panic!("Expected ')'"); }
     }
 
     fn number(&mut self) {
-        let val = self.parser.current.content.parse::<f64>().unwrap();
+        let val = self.parser.previous.content.parse::<f64>().unwrap();
         self.const_pool.push(val);
         if self.const_pool.len() > 256 { panic!("No room in const pool"); }
 
@@ -150,7 +130,6 @@ impl<'a> Compiler<'a> {
 
     //What the fuck
     fn parse_precedence(&mut self, prec_level: Precedence) {
-
         self.advance();
         let prefix_rule = self.get_rule(self.parser.previous.kind).prefix;
         
@@ -170,8 +149,6 @@ impl<'a> Compiler<'a> {
     }
 
     fn get_rule(&mut self, token_type: TokenType) -> ParseRule {
-        //let null_fn = |s| {};
-
         match token_type {
             LeftParen => ParseRule{ prefix: |s| s.grouping(), infix: |s| {}, prec: Null },
             Minus =>     ParseRule{ prefix: |s| s.unary(), infix: |s| s.binary(), prec: Term },
@@ -184,8 +161,6 @@ impl<'a> Compiler<'a> {
     }
 
 }
-
-
 
 /*
 Lox book C code reference:

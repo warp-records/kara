@@ -1,5 +1,6 @@
 
 
+use strum_macros::FromRepr;
 
 use std::env;
 use std::fs;
@@ -29,7 +30,11 @@ fn main() {
         //println!("{:?}", tokens);
         let mut compiler = Compiler::new(tokens);
         let bytecode = compiler.compile().unwrap();
-        println!("{:?}", bytecode);
+
+        for byte in bytecode {
+            println!("{:?}", Op::from_repr(byte));
+        }
+        //println!("{:?}", bytecode);
     }
 
     println!("{:?}", vm.interpret(&chunk));
