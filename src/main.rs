@@ -10,6 +10,7 @@ pub mod compile;
 
 use vm::*;
 use lex::*;
+use compile::*;
 
 fn main() {
 
@@ -26,6 +27,9 @@ fn main() {
 
         let tokens = lex(&source).unwrap();
         //println!("{:?}", tokens);
+        let mut compiler = Compiler::new(tokens);
+        let bytecode = compiler.compile().unwrap();
+        println!("{:?}", bytecode);
     }
 
     println!("{:?}", vm.interpret(&chunk));

@@ -13,6 +13,9 @@ pub struct Token<'a> {
 
 
 #[derive(Debug, FromRepr, Copy, Clone, PartialEq)]
+#[repr(u8)]
+//Parse rule function table requires that the order
+//here be kept as is since their values are used as indices
 pub enum TokenType {
     LeftParen, RightParen,
     LeftBrace, RightBrace,
