@@ -14,8 +14,8 @@ macro_rules! binary_op {
 
 //Stack point
 pub struct Vm {
-    pc: usize,
-    stack: ArrayVec<f64, 256>,
+    pub pc: usize,
+    pub stack: ArrayVec<f64, 256>,
 }
 
 #[derive(Debug)]
@@ -51,21 +51,22 @@ pub struct Chunk {
     //Wait shit, in the lexer these are pushed as Tokens
     //but in the disassembler they're interpreted as Op's
     //figure out wtf is going on there
-    code: Vec<u8>,
-    const_pool: Vec<f64>,
-    lines: Vec<u32>,
+    pub bytecode: Vec<u8>,
+    pub const_pool: Vec<f64>,
+    //this field isn't used?
+    //lines: Vec<u32>,
 }
 
 impl Vm {
     pub fn interpret(&mut self, chunk: &Chunk) -> Result<(), VmError> {
 
-        while self.pc < chunk.code.len() {
-            let instr = Op::from_repr(chunk.code[self.pc]).unwrap();
+        while self.pc < chunk.bytecode.len() {
+            let instr = Op::from_repr(chunk.bytecode[self.pc]).unwrap();
 
             match instr {
                 OpConstant => {
                     self.pc += 1;
-                    self.stack.push(chunk.const_pool[chunk.code[self.pc] as usize]);
+                    self.stack.push(chunk.const_pool[chunk.bytecode[self.pc] as usize]);
                 }
 
                 OpReturn => {
@@ -116,9 +117,9 @@ impl fmt::Display for Chunk {
 
         let mut i = 0;
 
-        while i < self.code.len() {
+        while i < self.bytecode.len() {
             //fix this bullshit later
-            let opcode = Op::from_repr(self.code[i]).unwrap();
+            let opcode = Op::from_repr(self.bytecode[i]).unwrap();
 
             //rust throws a fit if I don't put a stupid underscore beforehand
             _ = write!(f, "{:04} {:?}", i, opcode);
@@ -127,8 +128,8 @@ impl fmt::Display for Chunk {
                 OpConstant => {
                     i += 1;
                     _ = write!(f, "    {} '{}'", 
-                        self.code[i], 
-                        self.const_pool[self.code[i] as usize]);
+                        self.bytecode[i], 
+                        self.const_pool[self.bytecode[i] as usize]);
                         //i += 1;
                 }
 
@@ -147,10 +148,17 @@ impl fmt::Display for Chunk {
 impl Chunk {
     pub fn new() -> Self {
         Self {
-            code: Vec::new(),
+            bytecode: Vec::new(),
             const_pool: Vec::new(),
-            lines: Vec::new(),
+            //lines: Vec::new(),
         }
     }
 
+    /*
+    pub fn new(bytecode: Vec<u8>, const_pool: Vec<f64>) -> Self {
+        Self {
+            bytecode: bytecode,
+            const_pool: const_pool,
+        }
+    }*/
 }

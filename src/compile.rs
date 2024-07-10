@@ -48,8 +48,9 @@ enum Precedence {
 pub struct Compiler<'a> {
     parser: Parser<'a>,
     tokens: IntoIter<Token<'a>>,
-    bytecode: Vec<u8>,
-    const_pool: Vec<f64>,
+    //leave as public for now, but possibly change later
+    pub bytecode: Vec<u8>,
+    pub const_pool: Vec<f64>,
 }
 
 impl<'a> Compiler<'a> {
@@ -81,11 +82,13 @@ impl<'a> Compiler<'a> {
     }
 
     //just implement the authors way, and change later
-    pub fn compile(&mut self) -> Result<Vec<u8>, VmError> {
+    pub fn compile(&mut self) {//-> Result<Vec<u8>, VmError> {
         self.advance();
         self.expression();
 
-        Ok(std::mem::take(&mut self.bytecode))
+        if self.parser.current.kind != Eof { panic!("Expected EOF"); }
+        
+        //Ok(std::mem::take(&mut self.bytecode))
     }
 
     fn expression(&mut self) {
@@ -96,8 +99,10 @@ impl<'a> Compiler<'a> {
     fn grouping(&mut self) {
         //Never be afraid to express yourself :)
         self.expression();
+        //which one ?
         //if self.tokens.next().map(|token| token.kind) != Some(RightParen) { panic!("Expected ')'"); }
         if self.parser.current.kind != RightParen { panic!("Expected ')'"); }
+        self.advance();
     }
 
     fn number(&mut self) {
@@ -111,10 +116,10 @@ impl<'a> Compiler<'a> {
 
     //keep for now, possibly remove later
     fn unary(&mut self) {
-        let op = self.parser.previous.kind;
+        let op_type = self.parser.previous.kind;
         self.expression();
 
-        match op {
+        match op_type {
             Minus => {
                 self.bytecode.push(OpNegate as u8);
             },
@@ -126,6 +131,14 @@ impl<'a> Compiler<'a> {
         let op_type = self.parser.previous.kind;
         let parse_rule = self.get_rule(op_type);
         self.parse_precedence(Precedence::from_repr(parse_rule.prec as u8 + 1).unwrap());
+
+        match op_type {
+            Plus => self.bytecode.push(OpAdd as u8),
+            Minus => self.bytecode.push(OpSubtract as u8),
+            Star => self.bytecode.push(OpMultiply as u8),
+            Slash => self.bytecode.push(OpDivide as u8),
+            _ => unreachable!(),
+        };
     }
 
     //What the fuck

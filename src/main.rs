@@ -29,14 +29,17 @@ fn main() {
         let tokens = lex(&source).unwrap();
         //println!("{:?}", tokens);
         let mut compiler = Compiler::new(tokens);
-        let bytecode = compiler.compile().unwrap();
+        compiler.compile();
 
-        for byte in bytecode {
-            println!("{:?}", Op::from_repr(byte));
-        }
-        //println!("{:?}", bytecode);
+        let mut chunk = Chunk {
+            bytecode: compiler.bytecode.clone(),
+            const_pool: compiler.const_pool.clone(),
+            //lines: Vec::new(),
+        };
+        println!("{}", chunk);
     }
 
     println!("{:?}", vm.interpret(&chunk));
+    println!("{:?}", vm.stack);
 }
 
