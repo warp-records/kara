@@ -15,31 +15,28 @@ use compile::*;
 
 fn main() {
 
-    let mut vm = Vm::new();
-    let mut chunk = Chunk::new();
-
     let args: Vec<_> = env::args().collect();
 
-    if args.len() == 2 {
-        let source = fs::read_to_string(&args[1])
-            .expect("Error: unable to read file");
+    if args.len() != 2 { panic!("Expected filename"); }
 
-        //println!("{}", source);
+    let source = fs::read_to_string(&args[1])
+        .expect("Error: unable to read file");
 
-        let tokens = lex(&source).unwrap();
-        //println!("{:?}", tokens);
-        let mut compiler = Compiler::new(tokens);
-        compiler.compile();
+    let tokens = lex(&source).unwrap();
+    let mut compiler = Compiler::new(tokens);
+    compiler.compile();
 
-        let mut chunk = Chunk {
-            bytecode: compiler.bytecode.clone(),
-            const_pool: compiler.const_pool.clone(),
-            //lines: Vec::new(),
-        };
-        println!("{}", chunk);
-    }
+    let mut chunk = Chunk {
+        bytecode: compiler.bytecode.clone(),
+        const_pool: compiler.const_pool.clone(),
+        //lines: Vec::new(),
+    };
+    chunk.bytecode.push(Op::OpReturn as u8);
 
-    println!("{:?}", vm.interpret(&chunk));
-    println!("{:?}", vm.stack);
+    println!("{}", chunk);
+
+    let mut vm = Vm::new();
+    vm.interpret(&chunk);
+    //println!("{}", vm.interpret(&chunk));
 }
 

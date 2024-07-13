@@ -86,8 +86,9 @@ impl<'a> Compiler<'a> {
         self.advance();
         self.expression();
 
-        if self.parser.current.kind != Eof { panic!("Expected EOF"); }
-        
+        //if self.parser.current.kind != Eof { panic!("Expected ')'"); }
+
+
         //Ok(std::mem::take(&mut self.bytecode))
     }
 
@@ -100,7 +101,7 @@ impl<'a> Compiler<'a> {
         //Never be afraid to express yourself :)
         self.expression();
         //which one ?
-        //if self.tokens.next().map(|token| token.kind) != Some(RightParen) { panic!("Expected ')'"); }
+
         if self.parser.current.kind != RightParen { panic!("Expected ')'"); }
         self.advance();
     }
@@ -117,7 +118,7 @@ impl<'a> Compiler<'a> {
     //keep for now, possibly remove later
     fn unary(&mut self) {
         let op_type = self.parser.previous.kind;
-        self.expression();
+        self.parse_precedence(Unary);
 
         match op_type {
             Minus => {
@@ -175,68 +176,3 @@ impl<'a> Compiler<'a> {
 
 }
 
-/*
-Lox book C code reference:
-
-bool compile(const char* source, Chunk* chunk) {
-    initScanner(source);
-    advance();
-    expression();
-    consume(TOKEN_EOF, "Expect end of expression.");
-}
-
-//is this handled automatically in loop?
-void initScanner(const char* source) {
-    scanner.start = source;
-    scanner.current = source;
-    scanner.line = 1;
-}
-
-
-static void advance() {
-    parser.previous = parser.current;
-    parser.current = scanToken();
-}
-
-
-//scanner is for scanning TEXT, not tokens
-//handle with for loop
-Token scanToken() {
-    scanner.start = scanner.current;
-
-    if (isAtEnd()) return makeToken(TOKEN_EOF);
-
-    return errorToken("Unexpected character.");
-}
-
-static void consume(TokenType type, const char* message) {
-    if (parser.current.type == type) {
-        advance();
-        return;
-    }
-
-    errorAtCurrent(message);
-}
-
-static void number() {
-    double value = strtod(parser.previous.start, NULL);
-    emitConstant(value);
-}
-
-static void unary() {
-    TokenType operatorType = parser.previous.type;
-
-    // Compile the operand.
-     expression();
-
-     // Emit the operator instruction.
-    switch (operatorType) {
-        case TOKEN_MINUS: emitByte(OP_NEGATE); break;
-        default: return; // Unreachable.
-    }
-}
-
-static void parsePrecedence(Precedence precedence) {
-  // What goes here?
-}
-*/
