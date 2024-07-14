@@ -6,7 +6,7 @@ use Value::*;
 use Op::*;
 
 macro_rules! binary_op {
-    ($stack:expr, $op:tt) => {{
+    ($stack:expr, $op:tt, $return_type:ident) => {{
         let b = match $stack.pop().unwrap() {
             Value::Number(val) => val,
             _ => panic!("Operand must be number"),
@@ -15,11 +15,11 @@ macro_rules! binary_op {
             Value::Number(val) => val,
             _ => panic!("Operand must be number"),
         };
-        $stack.push(Number(a $op b));
+        $stack.push(Value::$return_type(a $op b));
     }};
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Value {
     Bool(bool),
     Nil,
@@ -51,6 +51,10 @@ pub enum Op {
     OpMultiply,
     OpDivide,
     OpNegate,
+    OpNot,
+    OpEqual,
+    OpGreater,
+    OpLess,
 }
 
 /*
@@ -70,6 +74,21 @@ impl fmt::Display for Value {
         }
     }
 }
+
+/*
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> {
+        match self {
+            if discriminant(self) == discriminant(Number) &&
+                discriminant(other) == discriminant(Number) { 
+                return ; 
+            }
+
+
+
+        }
+    }
+}*/
 
 
 #[derive(Default, Debug)]
@@ -109,21 +128,51 @@ impl Vm {
                 },
 
                 OpAdd => {
-                    binary_op!(self.stack, +);
+                    binary_op!(self.stack, +, Number);
                 },
 
                 OpSubtract => {
-                    binary_op!(self.stack, -);
+                    binary_op!(self.stack, -, Number);
                 },
 
                 OpMultiply => {
-                    binary_op!(self.stack, *);
+                    binary_op!(self.stack, *, Number);
                 },
 
                 OpDivide => {
-                    binary_op!(self.stack, /);
+                    binary_op!(self.stack, /, Number);
                 },
 
+                OpTrue => {
+                    self.stack.push(Bool(true));
+                },
+
+                OpFalse => {
+                    self.stack.push(Bool(false));
+                },
+
+                OpNil => {
+                    self.stack.push(Nil);
+                },
+
+                OpNot => {
+                    let val = self.stack.pop().unwrap();
+                    self.stack.push(Bool(val==Bool(false) || val==Nil));
+                },
+
+                OpEqual => {
+                    let a = self.stack.pop().unwrap();
+                    let b = self.stack.pop().unwrap();
+                    self.stack.push(Bool(a==b));
+                },
+
+                OpGreater => {
+                    binary_op!(self.stack, >, Bool);
+                },
+
+                OpLess => {
+                    binary_op!(self.stack, <, Bool);
+                },
                 //_ => {}
             }
 

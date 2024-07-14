@@ -3,7 +3,6 @@ use crate::Token;
 use crate::TokenType;
 use TokenType::*;
 use crate::Value;
-use crate::vm::VmError;
 use crate::Op::*;
 use Precedence::*;
 use std::vec::IntoIter;
@@ -107,6 +106,17 @@ impl<'a> Compiler<'a> {
         self.advance();
     }
 
+    fn literal(&mut self) {
+        let op = match self.parser.previous.kind {
+            True =>  OpTrue,
+            False => OpFalse,
+            Nil =>   OpNil,
+            _ => unreachable!(),
+        };
+
+        self.bytecode.push(op as u8);
+    }
+
     fn number(&mut self) {
         let val = self.parser.previous.content.parse::<f64>().unwrap();
         self.const_pool.push(Value::Number(val));
@@ -134,12 +144,24 @@ impl<'a> Compiler<'a> {
         let parse_rule = self.get_rule(op_type);
         self.parse_precedence(Precedence::from_repr(parse_rule.prec as u8 + 1).unwrap());
 
-        match op_type {
-            Plus => self.bytecode.push(OpAdd as u8),
-            Minus => self.bytecode.push(OpSubtract as u8),
-            Star => self.bytecode.push(OpMultiply as u8),
-            Slash => self.bytecode.push(OpDivide as u8),
+        let op = match op_type {
+            Plus => OpAdd,
+            Minus => OpSubtract,
+            Star => OpMultiply,
+            Slash => OpDivide,
+            //BE, LE, and GE are inverted later
+            BangEqual | EqualEqual => OpEqual,
+            Greater | LessEqual => OpGreater,
+            Less | GreaterEqual => OpLess,
             _ => unreachable!(),
+        };
+
+        self.bytecode.push(op as u8);
+
+        match op_type {
+            BangEqual | GreaterEqual | LessEqual => 
+                self.bytecode.push(OpNot as u8),
+            _ => {},
         };
     }
 
@@ -165,14 +187,24 @@ impl<'a> Compiler<'a> {
 
     fn get_rule(&mut self, token_type: TokenType) -> ParseRule {
         match token_type {
-            LeftParen => ParseRule{ prefix: |s| s.grouping(), infix: |s| {}, prec: Null },
+            LeftParen => ParseRule{ prefix: |s| s.grouping(), infix: |_s| {}, prec: Null },
             Minus =>     ParseRule{ prefix: |s| s.unary(), infix: |s| s.binary(), prec: Term },
-            Plus =>      ParseRule{ prefix: |s| {}, infix: |s| s.binary(), prec: Term },
-            Slash =>     ParseRule{ prefix: |s| {}, infix: |s| s.binary(), prec: Factor },
-            Star =>      ParseRule{ prefix: |s| {}, infix: |s| s.binary(), prec: Factor },
-            Number =>    ParseRule{ prefix: |s| s.number(), infix: |s| {}, prec: Null },
-            
-            _ =>         ParseRule{ prefix: |s| {}, infix: |s| {}, prec: Null },
+            Plus =>      ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Term },
+            Slash =>     ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Factor },
+            Star =>      ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Factor },
+            Number =>    ParseRule{ prefix: |s| s.number(), infix: |_s| {}, prec: Null },
+            True  |
+            False |
+            Nil =>       ParseRule{ prefix: |s| s.literal(), infix: |_s| {}, prec: Null },
+            Bang =>      ParseRule{ prefix: |s| s.unary(), infix: |_s| {}, prec: Null },
+            BangEqual |
+            EqualEqual => ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Equality },
+            Greater |
+            GreaterEqual |
+            Less |
+            LessEqual => ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Comparison },
+
+            _ =>         ParseRule{ prefix: |_s| {}, infix: |_s| {}, prec: Null },
         }
     }
 
