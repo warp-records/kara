@@ -2,6 +2,7 @@
 use crate::Token;
 use crate::TokenType;
 use TokenType::*;
+use crate::Value;
 use crate::vm::VmError;
 use crate::Op::*;
 use Precedence::*;
@@ -50,7 +51,7 @@ pub struct Compiler<'a> {
     tokens: IntoIter<Token<'a>>,
     //leave as public for now, but possibly change later
     pub bytecode: Vec<u8>,
-    pub const_pool: Vec<f64>,
+    pub const_pool: Vec<Value>,
 }
 
 impl<'a> Compiler<'a> {
@@ -108,7 +109,7 @@ impl<'a> Compiler<'a> {
 
     fn number(&mut self) {
         let val = self.parser.previous.content.parse::<f64>().unwrap();
-        self.const_pool.push(val);
+        self.const_pool.push(Value::Number(val));
         if self.const_pool.len() > 256 { panic!("No room in const pool"); }
 
         self.bytecode.push(OpConstant as u8);
@@ -170,6 +171,7 @@ impl<'a> Compiler<'a> {
             Slash =>     ParseRule{ prefix: |s| {}, infix: |s| s.binary(), prec: Factor },
             Star =>      ParseRule{ prefix: |s| {}, infix: |s| s.binary(), prec: Factor },
             Number =>    ParseRule{ prefix: |s| s.number(), infix: |s| {}, prec: Null },
+            
             _ =>         ParseRule{ prefix: |s| {}, infix: |s| {}, prec: Null },
         }
     }
