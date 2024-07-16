@@ -1,16 +1,14 @@
-
 use crate::vm::VmError;
-use TokenType::*;
 use strum_macros::FromRepr;
+use TokenType::*;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Token<'a> {
     pub kind: TokenType,
     pub line_num: usize,
     //How to make this an iterator over
-    pub content: &'a str
+    pub content: &'a str,
 }
-
 
 #[derive(Debug, FromRepr, Copy, Clone, PartialEq)]
 #[repr(u8)]
@@ -19,27 +17,47 @@ pub struct Token<'a> {
 pub enum TokenType {
     LeftParen, RightParen,
     LeftBrace, RightBrace,
-    Comma, Dot, Minus, Plus,
-    Semicolon, Slash, Star,
+    Comma,
+    Dot,
+    Minus, Plus,
+    Semicolon,
+    Slash,
+    Star,
     // One or two character s.
-    Bang, BangEqual,
-    Equal, EqualEqual,
+    Bang,
+    BangEqual, 
+    Equal,
+    EqualEqual,
     Greater, GreaterEqual,
     Less, LessEqual,
     // Literals; Might change the implementation of these later
     //to utilize the way Clox stores literals
-    Identifier, Str, Number,
+    Identifier,
+    Str,
+    Number,
     // Keywords.
-    And, Class, Else, False,
-    For, Fun, If, Nil, Or,
-    Print, Return, Super, This,
-    True, Var, While,
+    And,
+    Class,
+    Else,
+    False,
+    For,
+    Fun,
+    If,
+    Nil,
+    Or,
+    Print,
+    Return,
+    Super,
+    This,
+    True,
+    Var,
+    While,
 
     //Use Blank instead of None
-    Newline, Eof, Blank
+    Newline,
+    Eof,
+    Blank,
 }
-
-
 
 pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
     let mut line_num = 0;
@@ -49,9 +67,10 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
     let mut curr_idx: usize = 0;
 
     while let Some(c) = iter.next() {
-
         if c.is_whitespace() {
-            if c == '\n' { line_num += 1; }
+            if c == '\n' {
+                line_num += 1;
+            }
             curr_idx += 1;
             continue;
         }
@@ -63,41 +82,55 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
         let start_idx = curr_idx;
 
         let token_type = match c {
-
             '>' => match iter.peek() {
-                Some('=') => { iter.next(); curr_idx += 1; GreaterEqual }
-                _ => Greater
-            }
+                Some('=') => {
+                    iter.next();
+                    curr_idx += 1;
+                    GreaterEqual
+                }
+                _ => Greater,
+            },
 
             '<' => match iter.peek() {
-                Some('=') => { iter.next(); curr_idx += 1; LessEqual }
-                _ => Less
-            }
+                Some('=') => {
+                    iter.next();
+                    curr_idx += 1;
+                    LessEqual
+                }
+                _ => Less,
+            },
 
             '=' => match iter.peek() {
-                Some('=') => { iter.next(); curr_idx += 1; EqualEqual }
-                _ => Equal
-            }
-
+                Some('=') => {
+                    iter.next();
+                    curr_idx += 1;
+                    EqualEqual
+                }
+                _ => Equal,
+            },
 
             '!' => match iter.peek() {
-                Some('=') => { iter.next(); curr_idx += 1; BangEqual }
-                _ => Bang
-            }
+                Some('=') => {
+                    iter.next();
+                    curr_idx += 1;
+                    BangEqual
+                }
+                _ => Bang,
+            },
 
             '+' => Plus,
             '-' => Minus,
             '*' => Star,
-            
+
             '/' => match iter.peek() {
-                Some(&'/') => { 
-                    while iter.next() != Some('\n') {};
+                Some(&'/') => {
+                    while iter.next() != Some('\n') {}
                     line_num += 1;
                     continue;
                 }
-                
-                _ => Slash
-            }
+
+                _ => Slash,
+            },
 
             '(' => LeftParen,
             ')' => RightParen,
@@ -106,7 +139,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
             ',' => Comma,
             '.' => Dot,
             ';' => Semicolon,
-            
+
             '\"' => {
                 iter.next();
                 curr_idx += 1;
@@ -114,7 +147,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 //Might crash if you get to the end
                 let chr = iter.next();
                 while chr.is_some() && chr != Some('\"') {
-                    curr_idx += 1;            
+                    curr_idx += 1;
                 }
 
                 curr_idx += 1;
@@ -122,18 +155,21 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 //Do nothing with it for now
 
                 if iter.peek().is_none() {
-                    panic!("Hahaha sucker, not gonna tell you what the error here is, \
-                    		fuck you and good luck debugging lmao");
+                    panic!(
+                        "Hahaha sucker, not gonna tell you what the error here is, \
+                    		fuck you and good luck debugging lmao"
+                    );
                 }
 
                 Str
             }
 
             c if c.is_ascii_digit() => {
-
                 while let Some(next) = iter.peek() {
                     //in case code ends with number
-                    if next.to_digit(10).is_none() { break };
+                    if next.to_digit(10).is_none() {
+                        break;
+                    };
 
                     iter.next();
                     curr_idx += 1;
@@ -145,7 +181,9 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 }
 
                 while let Some(next) = iter.peek() {
-                    if next.to_digit(10).is_none() { break };
+                    if next.to_digit(10).is_none() {
+                        break;
+                    };
 
                     iter.next();
                     curr_idx += 1;
@@ -153,7 +191,6 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
 
                 Number
             }
-
 
             c if c.is_alphabetic() || c == '_' => {
                 let mut lexeme = String::from(c);
@@ -163,36 +200,34 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                         lexeme.push(*c);
                         iter.next();
                         curr_idx += 1;
-
                     } else {
                         break;
                     }
                 }
-
 
                 match lexeme.as_str() {
                     "and" => And,
                     "class" => Class,
                     "else" => Else,
                     "false" => False,
-                    "for" => For,               
+                    "for" => For,
                     "fun" => Fun,
-                    "if" => If,                 
-                    "nil" => Nil,                    
-                    "or" => Or,                    
-                    "print" => Print,                    
-                    "return" => Return,                    
-                    "super" => Super,                   
+                    "if" => If,
+                    "nil" => Nil,
+                    "or" => Or,
+                    "print" => Print,
+                    "return" => Return,
+                    "super" => Super,
                     "this" => This,
-                    "true" => True,                    
-                    "var" => Var,                   
+                    "true" => True,
+                    "var" => Var,
                     "while" => While,
                     //idfk how we're gonna handle strings lol
-                    _ => Identifier
+                    _ => Identifier,
                 }
             }
 
-            _ => panic!()
+            _ => panic!(),
         };
 
         curr_idx += 1;
@@ -200,21 +235,19 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
         let token = Token {
             kind: token_type,
             line_num: line_num,
-            content: &source[start_idx..curr_idx]
+            content: &source[start_idx..curr_idx],
         };
-
 
         println!("{}\t{:?}", token.content, token.kind);
 
         tokens.push(token);
     }
 
-
     //Must alter once you start reading into multiple chunks
     tokens.push(Token {
         kind: Eof,
         line_num: line_num,
-        content: ""
+        content: "",
     });
 
     Ok(tokens)

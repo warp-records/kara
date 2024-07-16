@@ -1,9 +1,8 @@
-
+use arrayvec::ArrayVec;
 use std::fmt;
 use strum_macros::FromRepr;
-use arrayvec::ArrayVec;
-use Value::*;
 use Op::*;
+use Value::*;
 
 macro_rules! binary_op {
     ($stack:expr, $op:tt, $return_type:ident) => {{
@@ -36,7 +35,6 @@ pub enum VmError {
     CompileError,
     RuntimeError,
 }
-
 
 #[derive(Debug, FromRepr)]
 #[repr(u8)]
@@ -80,8 +78,8 @@ impl PartialEq for Value {
     fn eq(&self, other: &Self) -> {
         match self {
             if discriminant(self) == discriminant(Number) &&
-                discriminant(other) == discriminant(Number) { 
-                return ; 
+                discriminant(other) == discriminant(Number) {
+                return ;
             }
 
 
@@ -89,7 +87,6 @@ impl PartialEq for Value {
         }
     }
 }*/
-
 
 #[derive(Default, Debug)]
 pub struct Chunk {
@@ -104,19 +101,19 @@ pub struct Chunk {
 
 impl Vm {
     pub fn interpret(&mut self, chunk: &Chunk) -> Result<(), VmError> {
-
         while self.pc < chunk.bytecode.len() {
             let instr = Op::from_repr(chunk.bytecode[self.pc]).unwrap();
 
             match instr {
                 OpConstant => {
                     self.pc += 1;
-                    self.stack.push(chunk.const_pool[chunk.bytecode[self.pc] as usize]);
+                    self.stack
+                        .push(chunk.const_pool[chunk.bytecode[self.pc] as usize]);
                 }
 
                 OpReturn => {
                     println!("{}", self.stack.last().unwrap());
-                },
+                }
 
                 OpNegate => {
                     //I think this'll work
@@ -125,55 +122,54 @@ impl Vm {
                     } else {
                         panic!("Operand must be a number");
                     }
-                },
+                }
 
                 OpAdd => {
                     binary_op!(self.stack, +, Number);
-                },
+                }
 
                 OpSubtract => {
                     binary_op!(self.stack, -, Number);
-                },
+                }
 
                 OpMultiply => {
                     binary_op!(self.stack, *, Number);
-                },
+                }
 
                 OpDivide => {
                     binary_op!(self.stack, /, Number);
-                },
+                }
 
                 OpTrue => {
                     self.stack.push(Bool(true));
-                },
+                }
 
                 OpFalse => {
                     self.stack.push(Bool(false));
-                },
+                }
 
                 OpNil => {
                     self.stack.push(Nil);
-                },
+                }
 
                 OpNot => {
                     let val = self.stack.pop().unwrap();
-                    self.stack.push(Bool(val==Bool(false) || val==Nil));
-                },
+                    self.stack.push(Bool(val == Bool(false) || val == Nil));
+                }
 
                 OpEqual => {
                     let a = self.stack.pop().unwrap();
                     let b = self.stack.pop().unwrap();
-                    self.stack.push(Bool(a==b));
-                },
+                    self.stack.push(Bool(a == b));
+                }
 
                 OpGreater => {
                     binary_op!(self.stack, >, Bool);
-                },
+                }
 
                 OpLess => {
                     binary_op!(self.stack, <, Bool);
-                },
-                //_ => {}
+                } //_ => {}
             }
 
             self.pc += 1;
@@ -193,7 +189,6 @@ impl Vm {
 //"Disassembler"
 impl fmt::Display for Chunk {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         let mut i = 0;
 
         while i < self.bytecode.len() {
@@ -206,10 +201,12 @@ impl fmt::Display for Chunk {
             match opcode {
                 OpConstant => {
                     i += 1;
-                    _ = write!(f, "    {} '{}'", 
-                        self.bytecode[i], 
-                        self.const_pool[self.bytecode[i] as usize]);
-                        //i += 1;
+                    _ = write!(
+                        f,
+                        "    {} '{}'",
+                        self.bytecode[i], self.const_pool[self.bytecode[i] as usize]
+                    );
+                    //i += 1;
                 }
 
                 _ => {}

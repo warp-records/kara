@@ -1,27 +1,25 @@
-
-
 use strum_macros::FromRepr;
 
 use std::env;
 use std::fs;
 
-pub mod vm;
-pub mod lex;
 pub mod compile;
+pub mod lex;
+pub mod vm;
 
-use vm::*;
-use lex::*;
 use compile::*;
+use lex::*;
+use vm::*;
 
 fn main() {
-
     let args: Vec<_> = env::args().collect();
 
-    if args.len() != 2 { panic!("Expected filename"); }
+    if args.len() != 2 {
+        panic!("Expected filename");
+    }
 
-    let source = fs::read_to_string(&args[1])
-        .expect("Error: unable to read file");
-
+    let source = fs::read_to_string(&args[1]).expect("Error: unable to read file");
+    //LEAH PLEASE GIVE ME A CHANCE
     let tokens = lex(&source).unwrap();
     let mut compiler = Compiler::new(tokens);
     compiler.compile();
@@ -31,6 +29,7 @@ fn main() {
         const_pool: compiler.const_pool.clone(),
         //lines: Vec::new(),
     };
+
     chunk.bytecode.push(Op::OpReturn as u8);
 
     println!("{}", chunk);
@@ -39,4 +38,3 @@ fn main() {
     vm.interpret(&chunk);
     //println!("{}", vm.interpret(&chunk));
 }
-

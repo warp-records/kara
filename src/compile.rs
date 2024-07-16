@@ -1,12 +1,11 @@
-
+use crate::Op::*;
 use crate::Token;
 use crate::TokenType;
-use TokenType::*;
 use crate::Value;
-use crate::Op::*;
-use Precedence::*;
 use std::vec::IntoIter;
 use strum_macros::FromRepr;
+use Precedence::*;
+use TokenType::*;
 
 //only needs lifetime parameter because
 //token contains string slice
@@ -54,7 +53,6 @@ pub struct Compiler<'a> {
 }
 
 impl<'a> Compiler<'a> {
-
     pub fn new(tokens: Vec<Token<'a>>) -> Self {
         Self {
             tokens: tokens.into_iter(),
@@ -62,14 +60,14 @@ impl<'a> Compiler<'a> {
                 previous: Token {
                     kind: Blank,
                     line_num: 0,
-                    content: ""
+                    content: "",
                 },
 
                 current: Token {
                     kind: Blank,
                     line_num: 0,
-                    content: ""
-                }
+                    content: "",
+                },
             },
             const_pool: vec![],
             bytecode: vec![],
@@ -82,12 +80,12 @@ impl<'a> Compiler<'a> {
     }
 
     //just implement the authors way, and change later
-    pub fn compile(&mut self) {//-> Result<Vec<u8>, VmError> {
+    pub fn compile(&mut self) {
+        //-> Result<Vec<u8>, VmError> {
         self.advance();
         self.expression();
 
         //if self.parser.current.kind != Eof { panic!("Expected ')'"); }
-
 
         //Ok(std::mem::take(&mut self.bytecode))
     }
@@ -102,15 +100,17 @@ impl<'a> Compiler<'a> {
         self.expression();
         //which one ?
 
-        if self.parser.current.kind != RightParen { panic!("Expected ')'"); }
+        if self.parser.current.kind != RightParen {
+            panic!("Expected ')'");
+        }
         self.advance();
     }
 
     fn literal(&mut self) {
         let op = match self.parser.previous.kind {
-            True =>  OpTrue,
+            True => OpTrue,
             False => OpFalse,
-            Nil =>   OpNil,
+            Nil => OpNil,
             _ => unreachable!(),
         };
 
@@ -120,10 +120,12 @@ impl<'a> Compiler<'a> {
     fn number(&mut self) {
         let val = self.parser.previous.content.parse::<f64>().unwrap();
         self.const_pool.push(Value::Number(val));
-        if self.const_pool.len() > 256 { panic!("No room in const pool"); }
+        if self.const_pool.len() > 256 {
+            panic!("No room in const pool");
+        }
 
         self.bytecode.push(OpConstant as u8);
-        self.bytecode.push((self.const_pool.len()-1) as u8);
+        self.bytecode.push((self.const_pool.len() - 1) as u8);
     }
 
     //keep for now, possibly remove later
@@ -135,6 +137,9 @@ impl<'a> Compiler<'a> {
             Minus => {
                 self.bytecode.push(OpNegate as u8);
             },
+            Bang => {
+                self.bytecode.push(OpNot as u8);
+            }, 
             _ => unreachable!(),
         };
     }
@@ -159,9 +164,8 @@ impl<'a> Compiler<'a> {
         self.bytecode.push(op as u8);
 
         match op_type {
-            BangEqual | GreaterEqual | LessEqual => 
-                self.bytecode.push(OpNot as u8),
-            _ => {},
+            BangEqual | GreaterEqual | LessEqual => self.bytecode.push(OpNot as u8),
+            _ => {}
         };
     }
 
@@ -169,7 +173,7 @@ impl<'a> Compiler<'a> {
     fn parse_precedence(&mut self, prec_level: Precedence) {
         self.advance();
         let prefix_rule = self.get_rule(self.parser.previous.kind).prefix;
-        
+
         //for some reason it won't let me cast a
         //closure that's a local variable
         if prefix_rule as usize == self.get_rule(Blank).prefix as usize {
@@ -187,26 +191,62 @@ impl<'a> Compiler<'a> {
 
     fn get_rule(&mut self, token_type: TokenType) -> ParseRule {
         match token_type {
-            LeftParen => ParseRule{ prefix: |s| s.grouping(), infix: |_s| {}, prec: Null },
-            Minus =>     ParseRule{ prefix: |s| s.unary(), infix: |s| s.binary(), prec: Term },
-            Plus =>      ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Term },
-            Slash =>     ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Factor },
-            Star =>      ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Factor },
-            Number =>    ParseRule{ prefix: |s| s.number(), infix: |_s| {}, prec: Null },
-            True  |
-            False |
-            Nil =>       ParseRule{ prefix: |s| s.literal(), infix: |_s| {}, prec: Null },
-            Bang =>      ParseRule{ prefix: |s| s.unary(), infix: |_s| {}, prec: Null },
-            BangEqual |
-            EqualEqual => ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Equality },
-            Greater |
-            GreaterEqual |
-            Less |
-            LessEqual => ParseRule{ prefix: |_s| {}, infix: |s| s.binary(), prec: Comparison },
+            LeftParen => ParseRule {
+                prefix: |s| s.grouping(),
+                infix: |_s| {},
+                prec: Null,
+            },
+            Minus => ParseRule {
+                prefix: |s| s.unary(),
+                infix: |s| s.binary(),
+                prec: Term,
+            },
+            Plus => ParseRule {
+                prefix: |_s| {},
+                infix: |s| s.binary(),
+                prec: Term,
+            },
+            Slash => ParseRule {
+                prefix: |_s| {},
+                infix: |s| s.binary(),
+                prec: Factor,
+            },
+            Star => ParseRule {
+                prefix: |_s| {},
+                infix: |s| s.binary(),
+                prec: Factor,
+            },
+            Number => ParseRule {
+                prefix: |s| s.number(),
+                infix: |_s| {},
+                prec: Null,
+            },
+            True | False | Nil => ParseRule {
+                prefix: |s| s.literal(),
+                infix: |_s| {},
+                prec: Null,
+            },
+            Bang => ParseRule {
+                prefix: |s| s.unary(),
+                infix: |_s| {},
+                prec: Null,
+            },
+            BangEqual | EqualEqual => ParseRule {
+                prefix: |_s| {},
+                infix: |s| s.binary(),
+                prec: Equality,
+            },
+            Greater | GreaterEqual | Less | LessEqual => ParseRule {
+                prefix: |_s| {},
+                infix: |s| s.binary(),
+                prec: Comparison,
+            },
 
-            _ =>         ParseRule{ prefix: |_s| {}, infix: |_s| {}, prec: Null },
+            _ => ParseRule {
+                prefix: |_s| {},
+                infix: |_s| {},
+                prec: Null,
+            },
         }
     }
-
 }
-
