@@ -117,6 +117,13 @@ impl<'a> Compiler<'a> {
         self.bytecode.push(op as u8);
     }
 
+    fn string(&mut self) {
+        let string = self.parser.previous.content.to_owned();
+        self.const_pool.push(Value::Str(string));
+        self.bytecode.push(OpConstant as u8);
+        self.bytecode.push((self.const_pool.len() - 1) as u8);
+    }
+
     fn number(&mut self) {
         let val = self.parser.previous.content.parse::<f64>().unwrap();
         self.const_pool.push(Value::Number(val));
@@ -240,6 +247,11 @@ impl<'a> Compiler<'a> {
                 prefix: |_s| {},
                 infix: |s| s.binary(),
                 prec: Comparison,
+            },
+            TokenType::Str => ParseRule {
+                prefix: |_s| {},
+                infix: |s| s.string(),
+                prec: Null,
             },
 
             _ => ParseRule {

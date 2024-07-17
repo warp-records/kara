@@ -8,22 +8,30 @@ macro_rules! binary_op {
     ($stack:expr, $op:tt, $return_type:ident) => {{
         let b = match $stack.pop().unwrap() {
             Value::Number(val) => val,
-            _ => panic!("Operand must be number"),
+            _ => panic!("Invalid operands"),
         };
         let a = match $stack.pop().unwrap() {
             Value::Number(val) => val,
-            _ => panic!("Operand must be number"),
+            _ => panic!("Invalid operands"),
         };
         $stack.push(Value::$return_type(a $op b));
     }};
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Bool(bool),
     Nil,
     Number(f64),
+    Str(String),
+    //Obj(Object),
 }
+
+//CI implementation uses a separate Object type,
+//revisit later
+//pub enum Object {
+//   Str(String),
+//}
 
 pub struct Vm {
     pub pc: usize,
@@ -65,9 +73,10 @@ impl Op {
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
+        match self {
             Number(inner) => write!(f, "{}", inner),
-            Bool(inner) => write!(f, "{}", if inner { "true" } else { "false" }),
+            Str(inner) => write!(f, "{}", inner),
+            Bool(inner) => write!(f, "{}", if *inner { "true" } else { "false" }),
             Nil => write!(f, "Nil"),
         }
     }
@@ -108,7 +117,7 @@ impl Vm {
                 OpConstant => {
                     self.pc += 1;
                     self.stack
-                        .push(chunk.const_pool[chunk.bytecode[self.pc] as usize]);
+                        .push(chunk.const_pool[chunk.bytecode[self.pc] as usize].clone());
                 }
 
                 OpReturn => {
@@ -125,7 +134,17 @@ impl Vm {
                 }
 
                 OpAdd => {
-                    binary_op!(self.stack, +, Number);
+                    match (self.stack.last(), self.stack.get(self.stack.len().wrapping_sub(2))) {
+                        (Some(Value::Str(a)), Some(Value::Str(b))) => {
+                            self.stack.push(Str(a.clone() + b));
+                            self.stack.pop();
+                            self.stack.pop();
+                        },
+                        (Some(Value::Number(_)), Some(Value::Number(_))) => {
+                            binary_op!(self.stack, +, Number);
+                        },
+                       _ => { panic!("Invalid operand type"); } 
+                    } 
                 }
 
                 OpSubtract => {
