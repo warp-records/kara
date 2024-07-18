@@ -118,7 +118,8 @@ impl<'a> Compiler<'a> {
     }
 
     fn string(&mut self) {
-        let string = self.parser.previous.content.to_owned();
+        let content = self.parser.previous.content;
+        let string = content[1..content.len()-1].to_owned();
         self.const_pool.push(Value::Str(string));
         self.bytecode.push(OpConstant as u8);
         self.bytecode.push((self.const_pool.len() - 1) as u8);
@@ -249,8 +250,8 @@ impl<'a> Compiler<'a> {
                 prec: Comparison,
             },
             TokenType::Str => ParseRule {
-                prefix: |_s| {},
-                infix: |s| s.string(),
+                prefix: |s| s.string(),
+                infix: |_s| {},
                 prec: Null,
             },
 

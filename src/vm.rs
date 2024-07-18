@@ -136,9 +136,11 @@ impl Vm {
                 OpAdd => {
                     match (self.stack.last(), self.stack.get(self.stack.len().wrapping_sub(2))) {
                         (Some(Value::Str(a)), Some(Value::Str(b))) => {
-                            self.stack.push(Str(a.clone() + b));
+                            let a = &a.clone();
+                            let b = b.clone();
                             self.stack.pop();
                             self.stack.pop();
+                            self.stack.push(Str(b + a));
                         },
                         (Some(Value::Number(_)), Some(Value::Number(_))) => {
                             binary_op!(self.stack, +, Number);

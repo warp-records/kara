@@ -18,7 +18,6 @@ fn main() {
     }
 
     let source = fs::read_to_string(&args[1]).expect("Error: unable to read file");
-    //LEAH PLEASE GIVE ME A CHANCE
     let tokens = lex(&source).unwrap();
     let mut compiler = Compiler::new(tokens);
     compiler.compile();

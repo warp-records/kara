@@ -145,16 +145,17 @@ pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {
                 curr_idx += 1;
 
                 //Might crash if you get to the end
-                let chr = iter.next();
+                let mut chr = iter.next();
                 while chr.is_some() && chr != Some('\"') {
                     curr_idx += 1;
+                    chr = iter.next();
                 }
 
                 curr_idx += 1;
 
                 //Do nothing with it for now
 
-                if iter.peek().is_none() {
+                if chr.is_none() {
                     panic!(
                         "Hahaha sucker, not gonna tell you what the error here is, \
                     		fuck you and good luck debugging lmao"
