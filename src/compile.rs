@@ -119,7 +119,7 @@ impl<'a> Compiler<'a> {
 
     fn string(&mut self) {
         let content = self.parser.previous.content;
-        let string = content[1..content.len()-1].to_owned();
+        let string = content[1..content.len() - 1].to_owned();
         self.const_pool.push(Value::Str(string));
         self.bytecode.push(OpConstant as u8);
         self.bytecode.push((self.const_pool.len() - 1) as u8);
@@ -144,10 +144,10 @@ impl<'a> Compiler<'a> {
         match op_type {
             Minus => {
                 self.bytecode.push(OpNegate as u8);
-            },
+            }
             Bang => {
                 self.bytecode.push(OpNot as u8);
-            }, 
+            }
             _ => unreachable!(),
         };
     }

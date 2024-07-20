@@ -74,7 +74,7 @@ impl Op {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Number(inner) => write!(f, "{}", inner),
+            Number(inner) => write!(f, "{:.2}", inner),
             Str(inner) => write!(f, "{}", inner),
             Bool(inner) => write!(f, "{}", if *inner { "true" } else { "false" }),
             Nil => write!(f, "Nil"),
@@ -134,19 +134,26 @@ impl Vm {
                 }
 
                 OpAdd => {
-                    match (self.stack.last(), self.stack.get(self.stack.len().wrapping_sub(2))) {
-                        (Some(Value::Str(a)), Some(Value::Str(b))) => {
-                            let a = &a.clone();
-                            let b = b.clone();
-                            self.stack.pop();
-                            self.stack.pop();
-                            self.stack.push(Str(b + a));
+                    match (
+                        self.stack.last().clone().unwrap(),
+                        self.stack.get(self.stack.len().wrapping_sub(2)).clone().unwrap()) {
+
+                        (Value::Str(_), Value::Str(_))
+                        | (Value::Number(_), Value::Str(_))
+                        | (Value::Str(_), Value::Number(_)) => {
+                       
+                            let (b, a) = (self.stack.pop().unwrap(), self.stack.pop().unwrap());
+                            self.stack.push(Str(format!("{a}{b}")));
                         },
-                        (Some(Value::Number(_)), Some(Value::Number(_))) => {
+
+                        (Value::Number(_), Value::Number(_)) => {
                             binary_op!(self.stack, +, Number);
-                        },
-                       _ => { panic!("Invalid operand type"); } 
-                    } 
+                        }
+
+                        _ => {
+                            panic!("Invalid operand type");
+                        }
+                    }
                 }
 
                 OpSubtract => {

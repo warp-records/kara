@@ -15,21 +15,26 @@ pub struct Token<'a> {
 //Parse rule function table requires that the order
 //here be kept as is since their values are used as indices
 pub enum TokenType {
-    LeftParen, RightParen,
-    LeftBrace, RightBrace,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
     Comma,
     Dot,
-    Minus, Plus,
+    Minus,
+    Plus,
     Semicolon,
     Slash,
     Star,
     // One or two character s.
     Bang,
-    BangEqual, 
+    BangEqual,
     Equal,
     EqualEqual,
-    Greater, GreaterEqual,
-    Less, LessEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
     // Literals; Might change the implementation of these later
     //to utilize the way Clox stores literals
     Identifier,

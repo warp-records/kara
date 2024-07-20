@@ -1,7 +1,2 @@
 
-"hello" + " world" + 
-
-
-
-
-"!"
+"hello" + " world program version " + 1.0 
