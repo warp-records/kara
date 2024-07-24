@@ -2,7 +2,6 @@
 name = "kara"
 version = "0.1.0"
 edition = "2021"
-license = "Minecraft Mod License"
 license-file = "LICENSE.md"
 description = """Crafting interpreters tutorial implementation in Rust,
  named Kara after the first girl I kissed <3"""
