@@ -1,2 +1,2 @@
 
-"hello" + " world program version " + 1.0 
+print 10 + 2;

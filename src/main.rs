@@ -27,7 +27,7 @@ fn main() {
         //lines: Vec::new(),
     };
 
-    chunk.bytecode.push(Op::OpReturn as u8);
+    //chunk.bytecode.push(Op::OpReturn as u8);
 
     println!("{}", chunk);
 

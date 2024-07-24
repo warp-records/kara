@@ -62,6 +62,7 @@ pub enum TokenType {
     Newline,
     Eof,
     Blank,
+
 }
 
 pub fn lex(source: &str) -> Result<Vec<Token>, VmError> {

@@ -61,6 +61,7 @@ pub enum Op {
     OpEqual,
     OpGreater,
     OpLess,
+    OpPrint,
 }
 
 impl fmt::Display for Value {
@@ -172,6 +173,12 @@ impl Vm {
                 OpLess => {
                     binary_op!(self.stack, <, Bool);
                 } //_ => {}
+
+                OpPrint => {
+                    //two newlines here or one?
+                    println!("{}", self.stack.pop().unwrap());
+
+                }
             }
 
             self.pc += 1;

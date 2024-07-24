@@ -74,83 +74,113 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    fn advance(&mut self) {
-        self.parser.previous = self.parser.current;
-        self.parser.current = self.tokens.next().unwrap();
-    }
-
     //just implement the authors way, and change later
     pub fn compile(&mut self) {
-        //-> Result<Vec<u8>, VmError> {
         self.advance();
-        self.expression();
-
-        //if self.parser.current.kind != Eof { panic!("Expected ')'"); }
-
-        //Ok(std::mem::take(&mut self.bytecode))
+        //self.expression();
+        
+        while !self.check_match(Eof) { 
+            self.declaration();
+        }
+        if self.parser.previous.kind != Eof { panic!("Expected 'EOF'"); } 
     }
 
-        fn expression(&mut self) {
-            self.parse_precedence(Assignemnt);
+    fn advance(&mut self) {
+        self.parser.previous = self.parser.current;
+        self.parser.current = match self.tokens.next() {
+            Some(token) => token,
+            None => Token { 
+                kind: Blank, 
+                line_num: self.parser.previous.line_num,
+                content: "" 
+            },
+        }
+    }
+    
+    fn check_match(&mut self, kind: TokenType) -> bool {
+        if self.parser.current.kind != kind { return false; }
+        self.advance();
+        true
+    }
+    
+    fn declaration(&mut self) {
+        self.statement();
+    }
+
+    fn statement(&mut self) {
+        if self.check_match(Print) {
+            self.print_statement();
+        }
+    }
+    
+    fn print_statement(&mut self) {
+        self.expression();
+        if self.parser.current.kind != Semicolon { panic!("Expected ';'"); }
+        self.advance();
+        self.bytecode.push(OpPrint as u8);
+    }
+
+    fn expression(&mut self) {
+        self.parse_precedence(Assignemnt);
+    }
+    
+    //prolly gonna have to change this later
+    fn grouping(&mut self) {
+        //Never be afraid to express yourself :)
+        self.expression();
+        //which one ?
+        
+        if self.parser.current.kind != RightParen {
+            panic!("Expected ')'");
+        }
+        self.advance();
+    }
+    
+    fn literal(&mut self) {
+        let op = match self.parser.previous.kind {
+            True => OpTrue,
+            False => OpFalse,
+            Nil => OpNil,
+            _ => unreachable!(),
+        };
+        
+        self.bytecode.push(op as u8);
+    }
+    
+    fn string(&mut self) {
+        let content = self.parser.previous.content;
+        let string = content[1..content.len() - 1].to_owned();
+        self.const_pool.push(Value::Str(string));
+        self.bytecode.push(OpConstant as u8);
+        self.bytecode.push((self.const_pool.len() - 1) as u8);
+    }
+    
+    fn number(&mut self) {
+        let val = self.parser.previous.content.parse::<f64>().unwrap();
+        self.const_pool.push(Value::Number(val));
+        if self.const_pool.len() > 256 {
+            panic!("No room in const pool");
         }
         
-        //prolly gonna have to change this later
-        fn grouping(&mut self) {
-            //Never be afraid to express yourself :)
-            self.expression();
-            //which one ?
-            
-            if self.parser.current.kind != RightParen {
-                panic!("Expected ')'");
+        self.bytecode.push(OpConstant as u8);
+        self.bytecode.push((self.const_pool.len() - 1) as u8);
+    }
+    
+    //keep for now, possibly remove later
+    fn unary(&mut self) {
+        let op_type = self.parser.previous.kind;
+        self.parse_precedence(Unary);
+        
+        match op_type {
+            Minus => {
+                self.bytecode.push(OpNegate as u8);
             }
-            self.advance();
-        }
-        
-        fn literal(&mut self) {
-            let op = match self.parser.previous.kind {
-                True => OpTrue,
-                False => OpFalse,
-                Nil => OpNil,
-                _ => unreachable!(),
-            };
-            
-            self.bytecode.push(op as u8);
-        }
-        
-        fn string(&mut self) {
-            let content = self.parser.previous.content;
-            let string = content[1..content.len() - 1].to_owned();
-            self.const_pool.push(Value::Str(string));
-            self.bytecode.push(OpConstant as u8);
-            self.bytecode.push((self.const_pool.len() - 1) as u8);
-        }
-        
-        fn number(&mut self) {
-            let val = self.parser.previous.content.parse::<f64>().unwrap();
-            self.const_pool.push(Value::Number(val));
-            if self.const_pool.len() > 256 {
-                panic!("No room in const pool");
+            Bang => {
+                self.bytecode.push(OpNot as u8);
             }
-            
-            self.bytecode.push(OpConstant as u8);
-            self.bytecode.push((self.const_pool.len() - 1) as u8);
-        }
-        
-        //keep for now, possibly remove later
-        fn unary(&mut self) {
-            let op_type = self.parser.previous.kind;
-            self.parse_precedence(Unary);
-            
-            match op_type {
-                Minus => {
-                    self.bytecode.push(OpNegate as u8);
-                }
-                Bang => {
-                    self.bytecode.push(OpNot as u8);
-                }
-                _ => unreachable!(),
-            };
-        }
+            _ => unreachable!(),
+        };
+    }
 
     fn binary(&mut self) {
         let op_type = self.parser.previous.kind;
