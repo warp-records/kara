@@ -7,7 +7,7 @@ use strum_macros::FromRepr;
 use Precedence::*;
 use TokenType::*;
 
-//only needs lifetime parameter because
+//only needs lifetime paameter because
 //token contains string slice
 struct Parser<'a> {
     previous: Token<'a>,
@@ -90,67 +90,67 @@ impl<'a> Compiler<'a> {
         //Ok(std::mem::take(&mut self.bytecode))
     }
 
-    fn expression(&mut self) {
-        self.parse_precedence(Assignemnt);
-    }
-
-    //prolly gonna have to change this later
-    fn grouping(&mut self) {
-        //Never be afraid to express yourself :)
-        self.expression();
-        //which one ?
-
-        if self.parser.current.kind != RightParen {
-            panic!("Expected ')'");
+        fn expression(&mut self) {
+            self.parse_precedence(Assignemnt);
         }
-        self.advance();
-    }
-
-    fn literal(&mut self) {
-        let op = match self.parser.previous.kind {
-            True => OpTrue,
-            False => OpFalse,
-            Nil => OpNil,
-            _ => unreachable!(),
-        };
-
-        self.bytecode.push(op as u8);
-    }
-
-    fn string(&mut self) {
-        let content = self.parser.previous.content;
-        let string = content[1..content.len() - 1].to_owned();
-        self.const_pool.push(Value::Str(string));
-        self.bytecode.push(OpConstant as u8);
-        self.bytecode.push((self.const_pool.len() - 1) as u8);
-    }
-
-    fn number(&mut self) {
-        let val = self.parser.previous.content.parse::<f64>().unwrap();
-        self.const_pool.push(Value::Number(val));
-        if self.const_pool.len() > 256 {
-            panic!("No room in const pool");
+        
+        //prolly gonna have to change this later
+        fn grouping(&mut self) {
+            //Never be afraid to express yourself :)
+            self.expression();
+            //which one ?
+            
+            if self.parser.current.kind != RightParen {
+                panic!("Expected ')'");
+            }
+            self.advance();
         }
-
-        self.bytecode.push(OpConstant as u8);
-        self.bytecode.push((self.const_pool.len() - 1) as u8);
-    }
-
-    //keep for now, possibly remove later
-    fn unary(&mut self) {
-        let op_type = self.parser.previous.kind;
-        self.parse_precedence(Unary);
-
-        match op_type {
-            Minus => {
-                self.bytecode.push(OpNegate as u8);
+        
+        fn literal(&mut self) {
+            let op = match self.parser.previous.kind {
+                True => OpTrue,
+                False => OpFalse,
+                Nil => OpNil,
+                _ => unreachable!(),
+            };
+            
+            self.bytecode.push(op as u8);
+        }
+        
+        fn string(&mut self) {
+            let content = self.parser.previous.content;
+            let string = content[1..content.len() - 1].to_owned();
+            self.const_pool.push(Value::Str(string));
+            self.bytecode.push(OpConstant as u8);
+            self.bytecode.push((self.const_pool.len() - 1) as u8);
+        }
+        
+        fn number(&mut self) {
+            let val = self.parser.previous.content.parse::<f64>().unwrap();
+            self.const_pool.push(Value::Number(val));
+            if self.const_pool.len() > 256 {
+                panic!("No room in const pool");
             }
-            Bang => {
-                self.bytecode.push(OpNot as u8);
-            }
-            _ => unreachable!(),
-        };
-    }
+            
+            self.bytecode.push(OpConstant as u8);
+            self.bytecode.push((self.const_pool.len() - 1) as u8);
+        }
+        
+        //keep for now, possibly remove later
+        fn unary(&mut self) {
+            let op_type = self.parser.previous.kind;
+            self.parse_precedence(Unary);
+            
+            match op_type {
+                Minus => {
+                    self.bytecode.push(OpNegate as u8);
+                }
+                Bang => {
+                    self.bytecode.push(OpNot as u8);
+                }
+                _ => unreachable!(),
+            };
+        }
 
     fn binary(&mut self) {
         let op_type = self.parser.previous.kind;

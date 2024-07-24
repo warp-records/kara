@@ -63,14 +63,6 @@ pub enum Op {
     OpLess,
 }
 
-/*
-impl Op {
-
-    pub fn to_repr(&self) -> u8 {
-        *self as u8
-    }
-}*/
-
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -82,26 +74,8 @@ impl fmt::Display for Value {
     }
 }
 
-/*
-impl PartialEq for Value {
-    fn eq(&self, other: &Self) -> {
-        match self {
-            if discriminant(self) == discriminant(Number) &&
-                discriminant(other) == discriminant(Number) {
-                return ;
-            }
-
-
-
-        }
-    }
-}*/
-
 #[derive(Default, Debug)]
 pub struct Chunk {
-    //Wait shit, in the lexer these are pushed as Tokens
-    //but in the disassembler they're interpreted as Op's
-    //figure out wtf is going on there
     pub bytecode: Vec<u8>,
     pub const_pool: Vec<Value>,
     //this field isn't used?
@@ -141,7 +115,7 @@ impl Vm {
                         (Value::Str(_), Value::Str(_))
                         | (Value::Number(_), Value::Str(_))
                         | (Value::Str(_), Value::Number(_)) => {
-                       
+                                                   
                             let (b, a) = (self.stack.pop().unwrap(), self.stack.pop().unwrap());
                             self.stack.push(Str(format!("{a}{b}")));
                         },
